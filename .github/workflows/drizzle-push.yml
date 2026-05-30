@@ -1,0 +1,38 @@
+name: Drizzle DB Push
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Ketik YES untuk konfirmasi push ke DB production'
+        required: true
+        type: string
+
+jobs:
+  db-push:
+    if: github.event.inputs.confirm == 'YES'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Drizzle DB Push
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm db:push
+
+      - name: Done
+        run: echo "Drizzle push selesai ✅"
