@@ -3,15 +3,15 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { organization } from "better-auth/plugins";
 import { db, user, session, account, verification } from "@notion-clone/db";
 
+const extraOrigins = (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
-    schema: {
-      user,
-      session,
-      account,
-      verification,
-    },
+    schema: { user, session, account, verification },
   }),
   emailAndPassword: {
     enabled: true,
@@ -32,8 +32,11 @@ export const auth = betterAuth({
     },
   },
   trustedOrigins: [
+    "http://localhost:5000",
     "http://localhost:5173",
+    "http://0.0.0.0:5000",
     process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
+    ...extraOrigins,
   ],
   plugins: [organization()],
 });
