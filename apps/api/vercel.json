@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "installCommand": "cd ../.. && pnpm install",
-  "buildCommand": "cd ../.. && pnpm --filter @notion-clone/db db:push",
+  "buildCommand": "cd ../.. && pnpm install --frozen-lockfile",
   "functions": {
     "api/[[...slug]].ts": {
       "runtime": "@vercel/node@5.8.8",
