@@ -1,0 +1,8 @@
+node_modules
+.turbo
+dist
+.svelte-kit
+.env
+*.local
+.DS_Store
+*.log

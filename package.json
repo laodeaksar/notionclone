@@ -1,0 +1,21 @@
+{
+  "name": "notion-clone",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "db:push": "pnpm --filter @notion-clone/db db:push",
+    "db:generate": "pnpm --filter @notion-clone/db db:generate"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  },
+  "packageManager": "pnpm@10.26.1",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  }
+}
