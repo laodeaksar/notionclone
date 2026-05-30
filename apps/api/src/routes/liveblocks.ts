@@ -5,9 +5,15 @@ import { eq, and } from "drizzle-orm";
 import { db, page, workspaceMember } from "@notion-clone/db";
 import { authMiddleware } from "../middleware/auth.js";
 
-const liveblocks = new Liveblocks({
-  secret: process.env.LIVEBLOCKS_SECRET_KEY!,
-});
+function getLiveblocks() {
+  const secret = process.env.LIVEBLOCKS_SECRET_KEY;
+  if (!secret || !secret.startsWith("sk_")) {
+    throw new Error(
+      "LIVEBLOCKS_SECRET_KEY is not configured. Please add it to your secrets."
+    );
+  }
+  return new Liveblocks({ secret });
+}
 
 export const liveblocksRoutes = new Elysia()
   .use(authMiddleware)
@@ -31,7 +37,7 @@ export const liveblocksRoutes = new Elysia()
             });
             if (!member) throw new Error("Forbidden");
 
-            const liveblocksSession = liveblocks.prepareSession(
+            const liveblocksSession = getLiveblocks().prepareSession(
               session.user.id,
               {
                 userInfo: {
