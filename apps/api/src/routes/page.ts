@@ -37,7 +37,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   // POST /api/pages
   .post(
     "/",
-    async ({ body, session }) => {
+    async ({ body, session }: { body: { title: string; workspaceId: string; parentId?: string; icon?: string; coverImage?: string }; session: any }) => {
       await ensureMember(body.workspaceId, session.user.id);
       const [newPage] = await db
         .insert(page)
@@ -76,7 +76,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   // PATCH /api/pages/:id
   .patch(
     "/:id",
-    async ({ params, body, session }) => {
+    async ({ params, body, session }: { params: { id: string }; body: { title?: string; icon?: string; coverImage?: string; parentId?: string | null }; session: any }) => {
       const existing = await db.query.page.findFirst({
         where: eq(page.id, params.id),
       });
@@ -114,7 +114,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   // PATCH /api/pages/:id/reorder
   .patch(
     "/:id/reorder",
-    async ({ params, body, session }) => {
+    async ({ params, body, session }: { params: { id: string }; body: { parentId?: string | null; order: number }; session: any }) => {
       const existing = await db.query.page.findFirst({
         where: eq(page.id, params.id),
       });
@@ -154,7 +154,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   // POST /api/pages/:id/versions
   .post(
     "/:id/versions",
-    async ({ params, body, session }) => {
+    async ({ params, body, session }: { params: { id: string }; body: { title: string; content: string }; session: any }) => {
       const existing = await db.query.page.findFirst({
         where: eq(page.id, params.id),
       });
