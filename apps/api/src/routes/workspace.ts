@@ -15,6 +15,16 @@ function slugify(name: string): string {
   );
 }
 
+const createWorkspaceSchema = t.Object({
+  name: t.String({ minLength: 1, maxLength: 100 }),
+  description: t.Optional(t.String()),
+});
+
+const updateWorkspaceSchema = t.Object({
+  name: t.Optional(t.String({ minLength: 1, maxLength: 100 })),
+  description: t.Optional(t.String()),
+});
+
 export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
   .use(authMiddleware)
   // GET /api/workspaces
@@ -44,10 +54,7 @@ export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
       return ws;
     },
     {
-      body: t.Object({
-        name: t.String({ minLength: 1, maxLength: 100 }),
-        description: t.Optional(t.String()),
-      }),
+      body: createWorkspaceSchema,
     }
   )
   // GET /api/workspaces/:id
@@ -81,10 +88,7 @@ export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
       return updated;
     },
     {
-      body: t.Object({
-        name: t.Optional(t.String({ minLength: 1, maxLength: 100 })),
-        description: t.Optional(t.String()),
-      }),
+      body: updateWorkspaceSchema,
     }
   )
   // DELETE /api/workspaces/:id
