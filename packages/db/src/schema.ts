@@ -10,6 +10,30 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
+// ── PageVersion ────────────────────────────────────────────────────────────────
+
+export const pageVersion = pgTable(
+  "page_version",
+  {
+    id: text("id").primaryKey(),
+    pageId: text("page_id")
+      .notNull()
+      .references(() => page.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    content: text("content").notNull().default("{}"),
+    icon: text("icon"),
+    coverImage: text("cover_image"),
+    savedBy: text("saved_by")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("page_version_page_idx").on(t.pageId),
+    index("page_version_created_idx").on(t.createdAt),
+  ]
+);
+
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
 export const workspaceRoleEnum = pgEnum("workspace_role", ["owner", "member"]);
@@ -184,4 +208,10 @@ export const pageRelations = relations(page, ({ one, many }) => ({
   }),
   children: many(page, { relationName: "pageChildren" }),
   creator: one(user, { fields: [page.createdBy], references: [user.id] }),
+  versions: many(pageVersion),
+}));
+
+export const pageVersionRelations = relations(pageVersion, ({ one }) => ({
+  page: one(page, { fields: [pageVersion.pageId], references: [page.id] }),
+  savedByUser: one(user, { fields: [pageVersion.savedBy], references: [user.id] }),
 }));

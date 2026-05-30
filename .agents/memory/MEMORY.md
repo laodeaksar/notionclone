@@ -1,0 +1,2 @@
+- [pnpm PATH setup](pnpm-path.md) — pnpm must be run with Node.js 22 in PATH; use the wrapper pattern in all workflow commands.
+- [Version history feature](version-history.md) — page_version table + 3 API endpoints + VersionHistory.svelte panel with save/restore; content stored as Tiptap JSON string.

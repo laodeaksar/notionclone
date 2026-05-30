@@ -1,8 +1,8 @@
 import { Elysia, t } from "elysia";
 import { Effect, pipe } from "effect";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { db, page, workspaceMember } from "@notion-clone/db";
+import { db, page, pageVersion, workspaceMember } from "@notion-clone/db";
 import { authMiddleware } from "../middleware/auth.js";
 
 async function ensureMember(workspaceId: string, userId: string) {
@@ -180,4 +180,94 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
         order: t.Number(),
       }),
     }
-  );
+  )
+  // GET /api/pages/:id/versions
+  .get("/:id/versions", async ({ params, session }) => {
+    const result = await Effect.runPromise(
+      pipe(
+        Effect.tryPromise(async () => {
+          const existing = await db.query.page.findFirst({
+            where: eq(page.id, params.id),
+          });
+          if (!existing) throw new Error("Not found");
+          await ensureMember(existing.workspaceId, session.user.id);
+          return db.query.pageVersion.findMany({
+            where: eq(pageVersion.pageId, params.id),
+            with: { savedByUser: { columns: { id: true, name: true, email: true } } },
+            orderBy: [desc(pageVersion.createdAt)],
+          });
+        })
+      )
+    );
+    return result;
+  })
+  // POST /api/pages/:id/versions
+  .post(
+    "/:id/versions",
+    async ({ params, body, session }) => {
+      const result = await Effect.runPromise(
+        pipe(
+          Effect.tryPromise(async () => {
+            const existing = await db.query.page.findFirst({
+              where: eq(page.id, params.id),
+            });
+            if (!existing) throw new Error("Not found");
+            await ensureMember(existing.workspaceId, session.user.id);
+            const [version] = await db
+              .insert(pageVersion)
+              .values({
+                id: nanoid(),
+                pageId: params.id,
+                title: body.title,
+                content: body.content,
+                icon: existing.icon,
+                coverImage: existing.coverImage,
+                savedBy: session.user.id,
+              })
+              .returning();
+            return version;
+          })
+        )
+      );
+      return result;
+    },
+    {
+      body: t.Object({
+        title: t.String(),
+        content: t.String(),
+      }),
+    }
+  )
+  // POST /api/pages/:id/versions/:versionId/restore
+  .post("/:id/versions/:versionId/restore", async ({ params, session }) => {
+    const result = await Effect.runPromise(
+      pipe(
+        Effect.tryPromise(async () => {
+          const existing = await db.query.page.findFirst({
+            where: eq(page.id, params.id),
+          });
+          if (!existing) throw new Error("Not found");
+          await ensureMember(existing.workspaceId, session.user.id);
+          const version = await db.query.pageVersion.findFirst({
+            where: and(
+              eq(pageVersion.id, params.versionId),
+              eq(pageVersion.pageId, params.id)
+            ),
+          });
+          if (!version) throw new Error("Version not found");
+          const [updated] = await db
+            .update(page)
+            .set({
+              title: version.title,
+              icon: version.icon,
+              coverImage: version.coverImage,
+              updatedAt: new Date(),
+            })
+            .where(eq(page.id, params.id))
+            .returning();
+          return { page: updated, content: version.content };
+        })
+      )
+    );
+    return result;
+  });

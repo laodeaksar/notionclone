@@ -5,6 +5,7 @@
   import { LiveblocksYjsProvider } from "@liveblocks/yjs";
   import * as Y from "yjs";
   import type { Editor } from "@tiptap/core";
+  import VersionHistory from "./VersionHistory.svelte";
 
   interface Page {
     id: string;
@@ -33,6 +34,11 @@
   let titleValue = $state(page.title);
   let titleTimeout: ReturnType<typeof setTimeout>;
 
+  // Version history state
+  let historyOpen = $state(false);
+  let savingVersion = $state(false);
+  let versionSavedMsg = $state(false);
+
   function handleTitleInput(e: Event) {
     const val = (e.target as HTMLInputElement).value;
     titleValue = val;
@@ -57,8 +63,42 @@
     input.click();
   }
 
+  async function saveVersion() {
+    if (!editor) return;
+    savingVersion = true;
+    try {
+      const content = JSON.stringify(editor.getJSON());
+      await fetch(`/api/pages/${page.id}/versions`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: titleValue, content }),
+      });
+      versionSavedMsg = true;
+      setTimeout(() => (versionSavedMsg = false), 2500);
+    } catch (err) {
+      console.error("Failed to save version", err);
+    } finally {
+      savingVersion = false;
+    }
+  }
+
+  function handleRestore(version: { title: string; content: string }) {
+    // Restore title
+    titleValue = version.title;
+    onTitleChange(version.title);
+    // Restore editor content
+    if (editor) {
+      try {
+        const doc = JSON.parse(version.content);
+        editor.commands.setContent(doc);
+      } catch {
+        // ignore malformed content
+      }
+    }
+  }
+
   onMount(async () => {
-    // Set up Yjs + Liveblocks
     ydoc = new Y.Doc();
     const room = liveblocks.enterRoom(page.id);
     provider = new LiveblocksYjsProvider(room, ydoc);
@@ -110,9 +150,40 @@
     >
       🖼️ Image
     </button>
+
+    <div class="flex-1"></div>
+
+    {#if versionSavedMsg}
+      <span class="text-xs text-green-600 font-medium">✓ Version saved</span>
+    {/if}
+
+    <button
+      onclick={saveVersion}
+      disabled={savingVersion}
+      class="text-xs px-2 py-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+      title="Save a version snapshot"
+    >
+      {savingVersion ? "Saving…" : "💾 Save version"}
+    </button>
+
+    <button
+      onclick={() => (historyOpen = true)}
+      class="text-xs px-2 py-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+      title="View version history"
+    >
+      🕐 History
+    </button>
+
     <span class="text-xs text-muted-foreground">Real-time collaboration enabled</span>
   </div>
 
   <!-- Editor mount point -->
   <div bind:this={editorEl} class="prose prose-neutral max-w-none min-h-[400px]"></div>
 </div>
+
+<!-- Version history panel -->
+<VersionHistory
+  pageId={page.id}
+  bind:open={historyOpen}
+  onRestore={handleRestore}
+/>
