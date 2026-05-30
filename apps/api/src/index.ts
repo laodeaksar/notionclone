@@ -9,9 +9,14 @@ import { liveblocksRoutes } from "./routes/liveblocks.js";
 const app = new Elysia()
   .use(
     cors({
-      origin: ["http://localhost:5173", "http://0.0.0.0:5173"],
+      origin: [
+        "http://localhost:5000",
+        "http://0.0.0.0:5000",
+        "http://localhost:5173",
+        "http://0.0.0.0:5173",
+      ],
       credentials: true,
-      allowedHeaders: ["Content-Type", "Authorization"],
+      allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     })
   )

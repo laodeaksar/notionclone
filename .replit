@@ -47,15 +47,20 @@ waitForPort = 3000
 outputType = "console"
 
 [[ports]]
-localPort = 5000
-externalPort = 80
-
-[[ports]]
 localPort = 3000
 externalPort = 3000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
 
 [userenv]
 
 [userenv.shared]
 BETTER_AUTH_URL = "http://localhost:3000"
 NODE_ENV = "development"
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["bash", "-c", "pnpm --filter api start & pnpm --filter web preview --host 0.0.0.0 --port 5000"]
+build = ["bash", "-c", "pnpm install && pnpm --filter web build"]
