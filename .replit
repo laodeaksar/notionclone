@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web"]
+modules = ["nodejs-20", "web", "postgresql-16"]
 [agent]
 expertMode = true
 stack = "BEST_EFFORT_FALLBACK"
@@ -62,8 +62,9 @@ externalPort = 3002
 [userenv]
 
 [userenv.shared]
-BETTER_AUTH_URL = "http://localhost:3000"
 NODE_ENV = "development"
+BETTER_AUTH_URL = "https://3c448997-bdf0-4f05-beb3-9d3d44199b2b-00-xe3hsltqa4ef.sisko.replit.dev"
+ALLOWED_ORIGINS = "https://3c448997-bdf0-4f05-beb3-9d3d44199b2b-00-xe3hsltqa4ef.sisko.replit.dev"
 
 [deployment]
 deploymentTarget = "autoscale"
