@@ -1,5 +1,4 @@
 import { Elysia, t } from "elysia";
-import { Effect, pipe } from "effect";
 import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, page, pageVersion, workspaceMember } from "@notion-clone/db";
@@ -22,21 +21,14 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   .get(
     "/",
     async ({ query, session }) => {
-      const result = await Effect.runPromise(
-        pipe(
-          Effect.tryPromise(async () => {
-            await ensureMember(query.workspaceId, session.user.id);
-            return db.query.page.findMany({
-              where: and(
-                eq(page.workspaceId, query.workspaceId),
-                eq(page.isArchived, false)
-              ),
-              orderBy: (p, { asc }) => [asc(p.order), asc(p.createdAt)],
-            });
-          })
-        )
-      );
-      return result;
+      await ensureMember(query.workspaceId, session.user.id);
+      return db.query.page.findMany({
+        where: and(
+          eq(page.workspaceId, query.workspaceId),
+          eq(page.isArchived, false)
+        ),
+        orderBy: (p, { asc }) => [asc(p.order), asc(p.createdAt)],
+      });
     },
     {
       query: t.Object({ workspaceId: t.String() }),
@@ -46,28 +38,20 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   .post(
     "/",
     async ({ body, session }) => {
-      const result = await Effect.runPromise(
-        pipe(
-          Effect.tryPromise(async () => {
-            await ensureMember(body.workspaceId, session.user.id);
-            const id = nanoid();
-            const [newPage] = await db
-              .insert(page)
-              .values({
-                id,
-                title: body.title || "Untitled",
-                workspaceId: body.workspaceId,
-                parentId: body.parentId ?? null,
-                icon: body.icon ?? null,
-                coverImage: body.coverImage ?? null,
-                createdBy: session.user.id,
-              })
-              .returning();
-            return newPage;
-          })
-        )
-      );
-      return result;
+      await ensureMember(body.workspaceId, session.user.id);
+      const [newPage] = await db
+        .insert(page)
+        .values({
+          id: nanoid(),
+          title: body.title || "Untitled",
+          workspaceId: body.workspaceId,
+          parentId: body.parentId ?? null,
+          icon: body.icon ?? null,
+          coverImage: body.coverImage ?? null,
+          createdBy: session.user.id,
+        })
+        .returning();
+      return newPage;
     },
     {
       body: t.Object({
@@ -81,43 +65,29 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   )
   // GET /api/pages/:id
   .get("/:id", async ({ params, session }) => {
-    const result = await Effect.runPromise(
-      pipe(
-        Effect.tryPromise(async () => {
-          const p = await db.query.page.findFirst({
-            where: eq(page.id, params.id),
-            with: { children: true, creator: true },
-          });
-          if (!p) throw new Error("Not found");
-          await ensureMember(p.workspaceId, session.user.id);
-          return p;
-        })
-      )
-    );
-    return result;
+    const p = await db.query.page.findFirst({
+      where: eq(page.id, params.id),
+      with: { children: true, creator: true },
+    });
+    if (!p) throw new Error("Not found");
+    await ensureMember(p.workspaceId, session.user.id);
+    return p;
   })
   // PATCH /api/pages/:id
   .patch(
     "/:id",
     async ({ params, body, session }) => {
-      const result = await Effect.runPromise(
-        pipe(
-          Effect.tryPromise(async () => {
-            const existing = await db.query.page.findFirst({
-              where: eq(page.id, params.id),
-            });
-            if (!existing) throw new Error("Not found");
-            await ensureMember(existing.workspaceId, session.user.id);
-            const [updated] = await db
-              .update(page)
-              .set({ ...body, updatedAt: new Date() })
-              .where(eq(page.id, params.id))
-              .returning();
-            return updated;
-          })
-        )
-      );
-      return result;
+      const existing = await db.query.page.findFirst({
+        where: eq(page.id, params.id),
+      });
+      if (!existing) throw new Error("Not found");
+      await ensureMember(existing.workspaceId, session.user.id);
+      const [updated] = await db
+        .update(page)
+        .set({ ...body, updatedAt: new Date() })
+        .where(eq(page.id, params.id))
+        .returning();
+      return updated;
     },
     {
       body: t.Object({
@@ -130,49 +100,36 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   )
   // DELETE /api/pages/:id
   .delete("/:id", async ({ params, session }) => {
-    await Effect.runPromise(
-      pipe(
-        Effect.tryPromise(async () => {
-          const existing = await db.query.page.findFirst({
-            where: eq(page.id, params.id),
-          });
-          if (!existing) throw new Error("Not found");
-          await ensureMember(existing.workspaceId, session.user.id);
-          await db
-            .update(page)
-            .set({ isArchived: true, updatedAt: new Date() })
-            .where(eq(page.id, params.id));
-        })
-      )
-    );
+    const existing = await db.query.page.findFirst({
+      where: eq(page.id, params.id),
+    });
+    if (!existing) throw new Error("Not found");
+    await ensureMember(existing.workspaceId, session.user.id);
+    await db
+      .update(page)
+      .set({ isArchived: true, updatedAt: new Date() })
+      .where(eq(page.id, params.id));
     return { success: true };
   })
   // PATCH /api/pages/:id/reorder
   .patch(
     "/:id/reorder",
     async ({ params, body, session }) => {
-      const result = await Effect.runPromise(
-        pipe(
-          Effect.tryPromise(async () => {
-            const existing = await db.query.page.findFirst({
-              where: eq(page.id, params.id),
-            });
-            if (!existing) throw new Error("Not found");
-            await ensureMember(existing.workspaceId, session.user.id);
-            const [updated] = await db
-              .update(page)
-              .set({
-                parentId: body.parentId ?? null,
-                order: body.order,
-                updatedAt: new Date(),
-              })
-              .where(eq(page.id, params.id))
-              .returning();
-            return updated;
-          })
-        )
-      );
-      return result;
+      const existing = await db.query.page.findFirst({
+        where: eq(page.id, params.id),
+      });
+      if (!existing) throw new Error("Not found");
+      await ensureMember(existing.workspaceId, session.user.id);
+      const [updated] = await db
+        .update(page)
+        .set({
+          parentId: body.parentId ?? null,
+          order: body.order,
+          updatedAt: new Date(),
+        })
+        .where(eq(page.id, params.id))
+        .returning();
+      return updated;
     },
     {
       body: t.Object({
@@ -183,53 +140,39 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   )
   // GET /api/pages/:id/versions
   .get("/:id/versions", async ({ params, session }) => {
-    const result = await Effect.runPromise(
-      pipe(
-        Effect.tryPromise(async () => {
-          const existing = await db.query.page.findFirst({
-            where: eq(page.id, params.id),
-          });
-          if (!existing) throw new Error("Not found");
-          await ensureMember(existing.workspaceId, session.user.id);
-          return db.query.pageVersion.findMany({
-            where: eq(pageVersion.pageId, params.id),
-            with: { savedByUser: { columns: { id: true, name: true, email: true } } },
-            orderBy: [desc(pageVersion.createdAt)],
-          });
-        })
-      )
-    );
-    return result;
+    const existing = await db.query.page.findFirst({
+      where: eq(page.id, params.id),
+    });
+    if (!existing) throw new Error("Not found");
+    await ensureMember(existing.workspaceId, session.user.id);
+    return db.query.pageVersion.findMany({
+      where: eq(pageVersion.pageId, params.id),
+      with: { savedByUser: { columns: { id: true, name: true, email: true } } },
+      orderBy: [desc(pageVersion.createdAt)],
+    });
   })
   // POST /api/pages/:id/versions
   .post(
     "/:id/versions",
     async ({ params, body, session }) => {
-      const result = await Effect.runPromise(
-        pipe(
-          Effect.tryPromise(async () => {
-            const existing = await db.query.page.findFirst({
-              where: eq(page.id, params.id),
-            });
-            if (!existing) throw new Error("Not found");
-            await ensureMember(existing.workspaceId, session.user.id);
-            const [version] = await db
-              .insert(pageVersion)
-              .values({
-                id: nanoid(),
-                pageId: params.id,
-                title: body.title,
-                content: body.content,
-                icon: existing.icon,
-                coverImage: existing.coverImage,
-                savedBy: session.user.id,
-              })
-              .returning();
-            return version;
-          })
-        )
-      );
-      return result;
+      const existing = await db.query.page.findFirst({
+        where: eq(page.id, params.id),
+      });
+      if (!existing) throw new Error("Not found");
+      await ensureMember(existing.workspaceId, session.user.id);
+      const [version] = await db
+        .insert(pageVersion)
+        .values({
+          id: nanoid(),
+          pageId: params.id,
+          title: body.title,
+          content: body.content,
+          icon: existing.icon,
+          coverImage: existing.coverImage,
+          savedBy: session.user.id,
+        })
+        .returning();
+      return version;
     },
     {
       body: t.Object({
@@ -240,34 +183,27 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   )
   // POST /api/pages/:id/versions/:versionId/restore
   .post("/:id/versions/:versionId/restore", async ({ params, session }) => {
-    const result = await Effect.runPromise(
-      pipe(
-        Effect.tryPromise(async () => {
-          const existing = await db.query.page.findFirst({
-            where: eq(page.id, params.id),
-          });
-          if (!existing) throw new Error("Not found");
-          await ensureMember(existing.workspaceId, session.user.id);
-          const version = await db.query.pageVersion.findFirst({
-            where: and(
-              eq(pageVersion.id, params.versionId),
-              eq(pageVersion.pageId, params.id)
-            ),
-          });
-          if (!version) throw new Error("Version not found");
-          const [updated] = await db
-            .update(page)
-            .set({
-              title: version.title,
-              icon: version.icon,
-              coverImage: version.coverImage,
-              updatedAt: new Date(),
-            })
-            .where(eq(page.id, params.id))
-            .returning();
-          return { page: updated, content: version.content };
-        })
-      )
-    );
-    return result;
+    const existing = await db.query.page.findFirst({
+      where: eq(page.id, params.id),
+    });
+    if (!existing) throw new Error("Not found");
+    await ensureMember(existing.workspaceId, session.user.id);
+    const version = await db.query.pageVersion.findFirst({
+      where: and(
+        eq(pageVersion.id, params.versionId),
+        eq(pageVersion.pageId, params.id)
+      ),
+    });
+    if (!version) throw new Error("Version not found");
+    const [updated] = await db
+      .update(page)
+      .set({
+        title: version.title,
+        icon: version.icon,
+        coverImage: version.coverImage,
+        updatedAt: new Date(),
+      })
+      .where(eq(page.id, params.id))
+      .returning();
+    return { page: updated, content: version.content };
   });

@@ -26,6 +26,21 @@ export const app = new Elysia()
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     })
   )
+  .onError(({ error, set, code }) => {
+    if (code === "VALIDATION") {
+      set.status = 400;
+      return { error: "Validation error", details: error.message };
+    }
+    const message = error instanceof Error ? error.message : "Internal server error";
+    const currentStatus = typeof set.status === "number" ? set.status : 200;
+    if (currentStatus === 200 || currentStatus === 500) {
+      if (/not found/i.test(message)) set.status = 404;
+      else if (/forbidden/i.test(message)) set.status = 403;
+      else if (/unauthorized/i.test(message)) set.status = 401;
+      else set.status = 500;
+    }
+    return { error: message };
+  })
   .all("/api/auth/*", ({ request }) => auth.handler(request))
   .use(workspaceRoutes)
   .use(pageRoutes)
