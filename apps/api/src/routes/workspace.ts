@@ -3,6 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, workspace, workspaceMember } from "@notion-clone/db";
 import { authMiddleware } from "../middleware/auth.js";
+import { NotFoundError, ForbiddenError } from "../errors.js";
 
 function slugify(name: string): string {
   return (
@@ -15,46 +16,55 @@ function slugify(name: string): string {
   );
 }
 
-const createWorkspaceSchema = t.Object({
-  name: t.String({ minLength: 1, maxLength: 100 }),
-  description: t.Optional(t.String()),
-});
-
-const updateWorkspaceSchema = t.Object({
-  name: t.Optional(t.String({ minLength: 1, maxLength: 100 })),
-  description: t.Optional(t.String()),
-});
-
 export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
   .use(authMiddleware)
   // GET /api/workspaces
-  .get("/", async ({ session }) => {
-    const members = await db.query.workspaceMember.findMany({
-      where: eq(workspaceMember.userId, session.user.id),
-      with: { workspace: true },
-    });
-    return members.map((m) => m.workspace);
-  })
+  .get(
+    "/",
+    async ({ query, session }) => {
+      const limit = Math.min(Number(query.limit ?? 50), 100);
+      const offset = Number(query.offset ?? 0);
+      const members = await db.query.workspaceMember.findMany({
+        where: eq(workspaceMember.userId, session.user.id),
+        with: { workspace: true },
+        limit,
+        offset,
+      });
+      return members.map((m) => m.workspace);
+    },
+    {
+      query: t.Object({
+        limit: t.Optional(t.Numeric()),
+        offset: t.Optional(t.Numeric()),
+      }),
+    }
+  )
   // POST /api/workspaces
   .post(
     "/",
     async ({ body, session }) => {
       const id = nanoid();
       const slug = slugify(body.name);
-      const [ws] = await db
-        .insert(workspace)
-        .values({ id, name: body.name, description: body.description, slug })
-        .returning();
-      await db.insert(workspaceMember).values({
-        id: nanoid(),
-        workspaceId: ws.id,
-        userId: session.user.id,
-        role: "owner",
+      const ws = await db.transaction(async (tx) => {
+        const [newWs] = await tx
+          .insert(workspace)
+          .values({ id, name: body.name, description: body.description, slug })
+          .returning();
+        await tx.insert(workspaceMember).values({
+          id: nanoid(),
+          workspaceId: newWs.id,
+          userId: session.user.id,
+          role: "owner",
+        });
+        return newWs;
       });
       return ws;
     },
     {
-      body: createWorkspaceSchema,
+      body: t.Object({
+        name: t.String({ minLength: 1, maxLength: 100 }),
+        description: t.Optional(t.String()),
+      }),
     }
   )
   // GET /api/workspaces/:id
@@ -66,7 +76,7 @@ export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
       ),
       with: { workspace: true },
     });
-    if (!member) throw new Error("Not found");
+    if (!member) throw new NotFoundError("Workspace");
     return member.workspace;
   })
   // PATCH /api/workspaces/:id
@@ -79,7 +89,8 @@ export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
           eq(workspaceMember.userId, session.user.id)
         ),
       });
-      if (!member || member.role !== "owner") throw new Error("Forbidden");
+      if (!member) throw new NotFoundError("Workspace");
+      if (member.role !== "owner") throw new ForbiddenError();
       const [updated] = await db
         .update(workspace)
         .set({ ...body, updatedAt: new Date() })
@@ -88,7 +99,10 @@ export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
       return updated;
     },
     {
-      body: updateWorkspaceSchema,
+      body: t.Object({
+        name: t.Optional(t.String({ minLength: 1, maxLength: 100 })),
+        description: t.Optional(t.String()),
+      }),
     }
   )
   // DELETE /api/workspaces/:id
@@ -99,7 +113,8 @@ export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
         eq(workspaceMember.userId, session.user.id)
       ),
     });
-    if (!member || member.role !== "owner") throw new Error("Forbidden");
+    if (!member) throw new NotFoundError("Workspace");
+    if (member.role !== "owner") throw new ForbiddenError();
     await db.delete(workspace).where(eq(workspace.id, params.id));
     return { success: true };
   });

@@ -3,13 +3,18 @@ import { Liveblocks } from "@liveblocks/node";
 import { eq, and } from "drizzle-orm";
 import { db, page, workspaceMember } from "@notion-clone/db";
 import { authMiddleware } from "../middleware/auth.js";
+import { NotFoundError, ForbiddenError } from "../errors.js";
+
+if (!process.env.LIVEBLOCKS_SECRET_KEY?.startsWith("sk_")) {
+  console.warn(
+    "[liveblocks] LIVEBLOCKS_SECRET_KEY is not configured. Collaboration features will be unavailable."
+  );
+}
 
 function getLiveblocks() {
   const secret = process.env.LIVEBLOCKS_SECRET_KEY;
-  if (!secret || !secret.startsWith("sk_")) {
-    throw new Error(
-      "LIVEBLOCKS_SECRET_KEY is not configured. Please add it to your secrets."
-    );
+  if (!secret?.startsWith("sk_")) {
+    throw new Error("LIVEBLOCKS_SECRET_KEY is not configured");
   }
   return new Liveblocks({ secret });
 }
@@ -22,7 +27,7 @@ export const liveblocksRoutes = new Elysia()
       const p = await db.query.page.findFirst({
         where: eq(page.id, body.room),
       });
-      if (!p) throw new Error("Page not found");
+      if (!p) throw new NotFoundError("Page");
 
       const member = await db.query.workspaceMember.findFirst({
         where: and(
@@ -30,7 +35,7 @@ export const liveblocksRoutes = new Elysia()
           eq(workspaceMember.userId, session.user.id)
         ),
       });
-      if (!member) throw new Error("Forbidden");
+      if (!member) throw new ForbiddenError();
 
       const liveblocksSession = getLiveblocks().prepareSession(
         session.user.id,

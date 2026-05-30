@@ -3,6 +3,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, page, pageVersion, workspaceMember } from "@notion-clone/db";
 import { authMiddleware } from "../middleware/auth.js";
+import { NotFoundError, ForbiddenError, BadRequestError } from "../errors.js";
 
 async function ensureMember(workspaceId: string, userId: string) {
   const member = await db.query.workspaceMember.findFirst({
@@ -11,16 +12,18 @@ async function ensureMember(workspaceId: string, userId: string) {
       eq(workspaceMember.userId, userId)
     ),
   });
-  if (!member) throw new Error("Forbidden");
+  if (!member) throw new ForbiddenError();
   return member;
 }
 
 export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   .use(authMiddleware)
-  // GET /api/pages?workspaceId=
+  // GET /api/pages?workspaceId=&limit=&offset=
   .get(
     "/",
     async ({ query, session }) => {
+      const limit = Math.min(Number(query.limit ?? 100), 200);
+      const offset = Number(query.offset ?? 0);
       await ensureMember(query.workspaceId, session.user.id);
       return db.query.page.findMany({
         where: and(
@@ -28,16 +31,22 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
           eq(page.isArchived, false)
         ),
         orderBy: (p, { asc }) => [asc(p.order), asc(p.createdAt)],
+        limit,
+        offset,
       });
     },
     {
-      query: t.Object({ workspaceId: t.String() }),
+      query: t.Object({
+        workspaceId: t.String(),
+        limit: t.Optional(t.Numeric()),
+        offset: t.Optional(t.Numeric()),
+      }),
     }
   )
   // POST /api/pages
   .post(
     "/",
-    async ({ body, session }: { body: { title: string; workspaceId: string; parentId?: string; icon?: string; coverImage?: string }; session: any }) => {
+    async ({ body, session }) => {
       await ensureMember(body.workspaceId, session.user.id);
       const [newPage] = await db
         .insert(page)
@@ -69,18 +78,18 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
       where: eq(page.id, params.id),
       with: { children: true, creator: true },
     });
-    if (!p) throw new Error("Not found");
+    if (!p) throw new NotFoundError("Page");
     await ensureMember(p.workspaceId, session.user.id);
     return p;
   })
   // PATCH /api/pages/:id
   .patch(
     "/:id",
-    async ({ params, body, session }: { params: { id: string }; body: { title?: string; icon?: string; coverImage?: string; parentId?: string | null }; session: any }) => {
+    async ({ params, body, session }) => {
       const existing = await db.query.page.findFirst({
         where: eq(page.id, params.id),
       });
-      if (!existing) throw new Error("Not found");
+      if (!existing) throw new NotFoundError("Page");
       await ensureMember(existing.workspaceId, session.user.id);
       const [updated] = await db
         .update(page)
@@ -103,7 +112,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
     const existing = await db.query.page.findFirst({
       where: eq(page.id, params.id),
     });
-    if (!existing) throw new Error("Not found");
+    if (!existing) throw new NotFoundError("Page");
     await ensureMember(existing.workspaceId, session.user.id);
     await db
       .update(page)
@@ -114,12 +123,23 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   // PATCH /api/pages/:id/reorder
   .patch(
     "/:id/reorder",
-    async ({ params, body, session }: { params: { id: string }; body: { parentId?: string | null; order: number }; session: any }) => {
+    async ({ params, body, session }) => {
       const existing = await db.query.page.findFirst({
         where: eq(page.id, params.id),
       });
-      if (!existing) throw new Error("Not found");
+      if (!existing) throw new NotFoundError("Page");
       await ensureMember(existing.workspaceId, session.user.id);
+
+      // Validate parentId belongs to the same workspace (prevent cross-workspace page stealing)
+      if (body.parentId) {
+        const parent = await db.query.page.findFirst({
+          where: eq(page.id, body.parentId),
+        });
+        if (!parent || parent.workspaceId !== existing.workspaceId) {
+          throw new BadRequestError("Parent page does not belong to the same workspace");
+        }
+      }
+
       const [updated] = await db
         .update(page)
         .set({
@@ -139,26 +159,39 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
     }
   )
   // GET /api/pages/:id/versions
-  .get("/:id/versions", async ({ params, session }) => {
-    const existing = await db.query.page.findFirst({
-      where: eq(page.id, params.id),
-    });
-    if (!existing) throw new Error("Not found");
-    await ensureMember(existing.workspaceId, session.user.id);
-    return db.query.pageVersion.findMany({
-      where: eq(pageVersion.pageId, params.id),
-      with: { savedByUser: { columns: { id: true, name: true, email: true } } },
-      orderBy: [desc(pageVersion.createdAt)],
-    });
-  })
-  // POST /api/pages/:id/versions
-  .post(
+  .get(
     "/:id/versions",
-    async ({ params, body, session }: { params: { id: string }; body: { title: string; content: string }; session: any }) => {
+    async ({ params, query, session }) => {
       const existing = await db.query.page.findFirst({
         where: eq(page.id, params.id),
       });
-      if (!existing) throw new Error("Not found");
+      if (!existing) throw new NotFoundError("Page");
+      await ensureMember(existing.workspaceId, session.user.id);
+      const limit = Math.min(Number(query.limit ?? 20), 50);
+      const offset = Number(query.offset ?? 0);
+      return db.query.pageVersion.findMany({
+        where: eq(pageVersion.pageId, params.id),
+        with: { savedByUser: { columns: { id: true, name: true, email: true } } },
+        orderBy: [desc(pageVersion.createdAt)],
+        limit,
+        offset,
+      });
+    },
+    {
+      query: t.Object({
+        limit: t.Optional(t.Numeric()),
+        offset: t.Optional(t.Numeric()),
+      }),
+    }
+  )
+  // POST /api/pages/:id/versions
+  .post(
+    "/:id/versions",
+    async ({ params, body, session }) => {
+      const existing = await db.query.page.findFirst({
+        where: eq(page.id, params.id),
+      });
+      if (!existing) throw new NotFoundError("Page");
       await ensureMember(existing.workspaceId, session.user.id);
       const [version] = await db
         .insert(pageVersion)
@@ -186,24 +219,28 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
     const existing = await db.query.page.findFirst({
       where: eq(page.id, params.id),
     });
-    if (!existing) throw new Error("Not found");
+    if (!existing) throw new NotFoundError("Page");
     await ensureMember(existing.workspaceId, session.user.id);
+
     const version = await db.query.pageVersion.findFirst({
       where: and(
         eq(pageVersion.id, params.versionId),
         eq(pageVersion.pageId, params.id)
       ),
     });
-    if (!version) throw new Error("Version not found");
+    if (!version) throw new NotFoundError("Version");
+
+    // Restore ALL version fields — including content — back to the page table
     const [updated] = await db
       .update(page)
       .set({
         title: version.title,
+        content: version.content,
         icon: version.icon,
         coverImage: version.coverImage,
         updatedAt: new Date(),
       })
       .where(eq(page.id, params.id))
       .returning();
-    return { page: updated, content: version.content };
+    return updated;
   });

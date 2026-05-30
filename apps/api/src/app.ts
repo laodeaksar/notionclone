@@ -1,21 +1,28 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { auth } from "@notion-clone/auth";
+import { HttpError } from "./errors.js";
 import { workspaceRoutes } from "./routes/workspace.js";
 import { pageRoutes } from "./routes/page.js";
 import { uploadRoutes } from "./routes/upload.js";
 import { liveblocksRoutes } from "./routes/liveblocks.js";
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
+const envOrigins = (process.env.ALLOWED_ORIGINS ?? "")
   .split(",")
   .map((o) => o.trim())
-  .filter(Boolean)
-  .concat([
-    "http://localhost:5000",
-    "http://0.0.0.0:5000",
-    "http://localhost:5173",
-    "http://0.0.0.0:5173",
-  ]);
+  .filter(Boolean);
+
+const devOrigins =
+  process.env.NODE_ENV !== "production"
+    ? [
+        "http://localhost:5000",
+        "http://0.0.0.0:5000",
+        "http://localhost:5173",
+        "http://0.0.0.0:5173",
+      ]
+    : [];
+
+const allowedOrigins = [...envOrigins, ...devOrigins];
 
 export const app = new Elysia()
   .use(
@@ -29,17 +36,17 @@ export const app = new Elysia()
   .onError(({ error, set, code }) => {
     if (code === "VALIDATION") {
       set.status = 400;
-      return { error: "Validation error", details: error.message };
+      return { error: "Validation error" };
     }
-    const message = error instanceof Error ? error.message : "Internal server error";
-    const currentStatus = typeof set.status === "number" ? set.status : 200;
-    if (currentStatus === 200 || currentStatus === 500) {
-      if (/not found/i.test(message)) set.status = 404;
-      else if (/forbidden/i.test(message)) set.status = 403;
-      else if (/unauthorized/i.test(message)) set.status = 401;
-      else set.status = 500;
+    if (error instanceof HttpError) {
+      set.status = error.status;
+      return { error: error.message };
     }
-    return { error: message };
+    // Non-HttpError: log internally, never expose details to client
+    console.error("[Internal Error]", error);
+    const currentStatus = typeof set.status === "number" && set.status !== 200 ? set.status : 500;
+    set.status = currentStatus;
+    return { error: "Internal server error" };
   })
   .all("/api/auth/*", ({ request }) => auth.handler(request))
   .use(workspaceRoutes)
