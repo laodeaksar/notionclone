@@ -36,7 +36,7 @@ export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
   // POST /api/workspaces
   .post(
     "/",
-    async ({ body, session }) => {
+    async ({ body, session }: { body: { name: string; description?: string }; session: any }) => {
       const result = await Effect.runPromise(
         pipe(
           Effect.tryPromise(async () => {
@@ -90,7 +90,7 @@ export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
   // PATCH /api/workspaces/:id
   .patch(
     "/:id",
-    async ({ params, body, session }) => {
+    async ({ params, body, session }: { params: { id: string }; body: { name?: string; description?: string }; session: any }) => {
       const result = await Effect.runPromise(
         pipe(
           Effect.tryPromise(() =>
