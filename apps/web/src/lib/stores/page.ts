@@ -71,17 +71,17 @@ function createPageStore() {
     async create(input: { title: string; workspaceId: string; parentId?: string }) {
       const { data, error } = await api.api.pages.post(input);
       if (error) throw new Error(String(error));
-      const page = data as Page;
+      const page = data as unknown as Page;
       update((s) => {
         const pages = [...s.pages, page];
         return { ...s, pages, tree: buildTree(pages), current: page };
       });
       return page;
     },
-    async updatePage(id: string, input: Partial<Pick<Page, "title" | "icon" | "coverImage">>) {
+    async updatePage(id: string, input: { title?: string; icon?: string; coverImage?: string }) {
       const { data, error } = await api.api.pages({ id }).patch(input);
       if (error) throw new Error(String(error));
-      const updated = data as Page;
+      const updated = data as unknown as Page;
       update((s) => {
         const pages = s.pages.map((p) => (p.id === id ? updated : p));
         return { ...s, pages, tree: buildTree(pages), current: s.current?.id === id ? updated : s.current };

@@ -31,6 +31,8 @@
     "yjs": "^13.6.27"
   },
   "devDependencies": {
+    "api": "workspace:*",
+    "elysia": "^1.1.27",
     "@sveltejs/adapter-node": "^5.2.12",
     "@sveltejs/adapter-vercel": "6.3.3",
     "@sveltejs/kit": "^2.21.1",

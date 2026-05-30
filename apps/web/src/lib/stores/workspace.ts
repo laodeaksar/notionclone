@@ -30,7 +30,7 @@ function createWorkspaceStore() {
       try {
         const { data, error } = await api.api.workspaces.get();
         if (error) throw new Error(String(error));
-        update((s) => ({ ...s, workspaces: (data as Workspace[]) ?? [], loading: false }));
+        update((s) => ({ ...s, workspaces: (data as unknown as Workspace[]) ?? [], loading: false }));
       } catch (e) {
         update((s) => ({ ...s, error: String(e), loading: false }));
       }
@@ -41,7 +41,7 @@ function createWorkspaceStore() {
     async create(name: string, description?: string) {
       const { data, error } = await api.api.workspaces.post({ name, description });
       if (error) throw new Error(String(error));
-      const ws = data as Workspace;
+      const ws = data as unknown as Workspace;
       update((s) => ({ ...s, workspaces: [...s.workspaces, ws], current: ws }));
       return ws;
     },

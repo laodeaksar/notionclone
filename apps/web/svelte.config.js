@@ -16,6 +16,9 @@ const config = {
   preprocess: vitePreprocess(),
   kit: {
     adapter,
+    alias: {
+      api: "../api/src/index.ts",
+    },
   },
 };
 

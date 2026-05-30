@@ -19,7 +19,7 @@ export const liveblocksRoutes = new Elysia()
   .use(authMiddleware)
   .post(
     "/api/liveblocks-auth",
-    async ({ body, session }) => {
+    async ({ body, session }: { body: { room: string }; session: any }) => {
       const result = await Effect.runPromise(
         pipe(
           Effect.tryPromise(async () => {
