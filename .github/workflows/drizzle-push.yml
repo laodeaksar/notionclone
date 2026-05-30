@@ -32,7 +32,7 @@ jobs:
       - name: Drizzle DB Push
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: pnpm db:migrate
+        run: pnpm db:push
 
       - name: Done
         run: echo "Drizzle push selesai ✅"
