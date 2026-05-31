@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia";
+import { type Static } from "@sinclair/typebox";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, workspaceMember, user } from "@notion-clone/db";
@@ -16,6 +17,17 @@ async function ensureOwner(workspaceId: string, userId: string) {
   if (member.role !== "owner") throw new ForbiddenError();
   return member;
 }
+
+const AddMemberSchema = t.Object({
+  userId: t.String(),
+  role: t.Optional(t.Union([t.Literal("owner"), t.Literal("member")])),
+});
+type AddMemberDto = Static<typeof AddMemberSchema>;
+
+const UpdateMemberRoleSchema = t.Object({
+  role: t.Union([t.Literal("owner"), t.Literal("member")]),
+});
+type UpdateMemberRoleDto = Static<typeof UpdateMemberRoleSchema>;
 
 export const workspaceMemberRoutes = new Elysia({
   prefix: "/api/workspaces/:id/members",
@@ -46,9 +58,10 @@ export const workspaceMemberRoutes = new Elysia({
     "/",
     async ({ params, body, session }) => {
       await ensureOwner(params.id, session.user.id);
+      const { userId, role = "member" } = body as AddMemberDto;
 
       const targetUser = await db.query.user.findFirst({
-        where: eq(user.id, body.userId),
+        where: eq(user.id, userId),
         columns: { id: true },
       });
       if (!targetUser) throw new NotFoundError("User");
@@ -56,7 +69,7 @@ export const workspaceMemberRoutes = new Elysia({
       const existing = await db.query.workspaceMember.findFirst({
         where: and(
           eq(workspaceMember.workspaceId, params.id),
-          eq(workspaceMember.userId, body.userId)
+          eq(workspaceMember.userId, userId)
         ),
       });
       if (existing) throw new BadRequestError("User is already a member of this workspace");
@@ -66,17 +79,14 @@ export const workspaceMemberRoutes = new Elysia({
         .values({
           id: nanoid(),
           workspaceId: params.id,
-          userId: body.userId,
-          role: body.role ?? "member",
+          userId: userId,
+          role: role,
         })
         .returning();
       return member;
     },
     {
-      body: t.Object({
-        userId: t.String(),
-        role: t.Optional(t.Union([t.Literal("owner"), t.Literal("member")])),
-      }),
+      body: AddMemberSchema,
     }
   )
   // PATCH /api/workspaces/:id/members/:memberId — update role
@@ -84,6 +94,7 @@ export const workspaceMemberRoutes = new Elysia({
     "/:memberId",
     async ({ params, body, session }) => {
       await ensureOwner(params.id, session.user.id);
+      const { role } = body as UpdateMemberRoleDto;
 
       const target = await db.query.workspaceMember.findFirst({
         where: and(
@@ -100,15 +111,13 @@ export const workspaceMemberRoutes = new Elysia({
 
       const [updated] = await db
         .update(workspaceMember)
-        .set({ role: body.role })
+        .set({ role })
         .where(eq(workspaceMember.id, params.memberId))
         .returning();
       return updated;
     },
     {
-      body: t.Object({
-        role: t.Union([t.Literal("owner"), t.Literal("member")]),
-      }),
+      body: UpdateMemberRoleSchema,
     }
   )
   // DELETE /api/workspaces/:id/members/:memberId — remove member
