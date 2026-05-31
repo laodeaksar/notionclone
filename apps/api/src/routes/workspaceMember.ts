@@ -79,8 +79,8 @@ export const workspaceMemberRoutes = new Elysia({
         .values({
           id: nanoid(),
           workspaceId: params.id,
-          userId: userId,
-          role: role,
+          userId,
+          role,
         })
         .returning();
       return member;
