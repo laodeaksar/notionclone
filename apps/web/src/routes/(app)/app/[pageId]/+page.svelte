@@ -1,23 +1,16 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
   import { page as pageParam } from "$app/stores";
-  import { authClient } from "$lib/auth-client.js";
   import { pageStore } from "$lib/stores/page.js";
-  import PageEditor from "$lib/components/PageEditor.svelte";
+  import { userStore } from "$lib/stores/user.js";
   import { api } from "$lib/eden.js";
+  import PageEditor from "$lib/components/PageEditor.svelte";
+  import type { Page } from "$lib/stores/page.js";
 
   let pageId = $derived($pageParam.params.pageId);
-  let currentPage = $state<{
-    id: string;
-    title: string;
-    icon: string | null;
-    coverImage: string | null;
-    workspaceId: string;
-    parentId: string | null;
-    createdBy: string;
-  } | null>(null);
-  let user = $state<{ id: string; name: string; email: string } | null>(null);
+  let user = $derived($userStore);
+  let currentPage = $state<Page | null>(null);
   let loading = $state(true);
+  let notFound = $state(false);
 
   $effect(() => {
     if (pageId) {
@@ -27,15 +20,15 @@
 
   async function loadPage(id: string) {
     loading = true;
+    notFound = false;
     try {
-      const session = await authClient.getSession();
-      user = (session.data?.user as typeof user) ?? null;
-
-      const res = await fetch(`/api/pages/${id}`, { credentials: "include" });
-      if (res.ok) {
-        currentPage = await res.json();
-        pageStore.setCurrent(currentPage);
+      const { data, error } = await api.api.pages({ id }).get();
+      if (error || !data) {
+        notFound = true;
+        return;
       }
+      currentPage = data as unknown as Page;
+      pageStore.setCurrent(currentPage);
     } finally {
       loading = false;
     }
@@ -52,10 +45,10 @@
   <div class="flex h-full items-center justify-center">
     <div class="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
   </div>
-{:else if currentPage && user}
-  <PageEditor page={currentPage} userName={user.name} onTitleChange={handleTitleChange} />
-{:else}
+{:else if notFound || !currentPage}
   <div class="flex h-full items-center justify-center text-muted-foreground">
     Page not found
   </div>
+{:else if user}
+  <PageEditor page={currentPage} userName={user.name} onTitleChange={handleTitleChange} />
 {/if}

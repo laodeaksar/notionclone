@@ -4,20 +4,29 @@
   import { authClient } from "$lib/auth-client.js";
   import { workspaceStore } from "$lib/stores/workspace.js";
   import { pageStore } from "$lib/stores/page.js";
+  import { userStore } from "$lib/stores/user.js";
   import PageTreeItem from "./PageTreeItem.svelte";
   import CreateWorkspaceModal from "./CreateWorkspaceModal.svelte";
   import type { Workspace } from "$lib/stores/workspace.js";
 
-  let { user }: { user: { id: string; name: string; email: string } } = $props();
-
   let ws = $derived($workspaceStore);
   let pages = $derived($pageStore);
+  let user = $derived($userStore);
   let showCreateWs = $state(false);
   let collapsed = $state(false);
 
+  // Guard: only reload pages when workspace actually changes, not on every render
+  let loadedWorkspaceId = $state<string | null>(null);
+
   $effect(() => {
-    if (ws.current) {
-      pageStore.load(ws.current.id);
+    const currentId = ws.current?.id ?? null;
+    if (currentId && currentId !== loadedWorkspaceId) {
+      loadedWorkspaceId = currentId;
+      pageStore.load(currentId);
+    }
+    if (!currentId) {
+      loadedWorkspaceId = null;
+      pageStore.reset();
     }
   });
 
@@ -41,7 +50,11 @@
   }
 </script>
 
-<aside class="w-64 shrink-0 h-full border-r border-border bg-muted/30 flex flex-col overflow-hidden" class:w-12={collapsed}>
+<aside
+  class="shrink-0 h-full border-r border-border bg-muted/30 flex flex-col overflow-hidden transition-all"
+  class:w-64={!collapsed}
+  class:w-12={collapsed}
+>
   <!-- Header -->
   <div class="flex items-center justify-between px-3 py-3 border-b border-border">
     {#if !collapsed}
@@ -103,18 +116,20 @@
     </div>
 
     <!-- Footer -->
-    <div class="border-t border-border px-3 py-2 flex items-center justify-between">
-      <div class="min-w-0">
-        <p class="text-sm font-medium truncate">{user.name}</p>
-        <p class="text-xs text-muted-foreground truncate">{user.email}</p>
+    {#if user}
+      <div class="border-t border-border px-3 py-2 flex items-center justify-between">
+        <div class="min-w-0">
+          <p class="text-sm font-medium truncate">{user.name}</p>
+          <p class="text-xs text-muted-foreground truncate">{user.email}</p>
+        </div>
+        <button
+          onclick={logout}
+          class="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent"
+        >
+          Out
+        </button>
       </div>
-      <button
-        onclick={logout}
-        class="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent"
-      >
-        Out
-      </button>
-    </div>
+    {/if}
   {/if}
 </aside>
 

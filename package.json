@@ -6,6 +6,7 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
+    "test": "turbo test",
     "db:push": "pnpm --filter @notion-clone/db db:push",
     "db:migrate": "pnpm --filter @notion-clone/db db:migrate",
     "db:generate": "pnpm --filter @notion-clone/db db:generate"
@@ -18,8 +19,5 @@
   "engines": {
     "node": ">=22",
     "pnpm": ">=10"
-  },
-  "dependencies": {
-    "pnpm": "^11.5.0"
   }
 }

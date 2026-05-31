@@ -7,10 +7,14 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".svelte-kit/**", "dist/**", ".next/**"]
+      "outputs": [".svelte-kit/**", "dist/**"]
     },
     "lint": {
       "dependsOn": ["^lint"]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": []
     },
     "db:push": {
       "cache": false

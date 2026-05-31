@@ -3,11 +3,11 @@
   import { goto } from "$app/navigation";
   import { authClient } from "$lib/auth-client.js";
   import { workspaceStore } from "$lib/stores/workspace.js";
-  import { pageStore } from "$lib/stores/page.js";
+  import { userStore, type User } from "$lib/stores/user.js";
   import Sidebar from "$lib/components/Sidebar.svelte";
 
   let { children } = $props();
-  let user = $state<{ id: string; name: string; email: string } | null>(null);
+  let ready = $state(false);
 
   onMount(async () => {
     const session = await authClient.getSession();
@@ -15,14 +15,15 @@
       goto("/login");
       return;
     }
-    user = session.data.user as { id: string; name: string; email: string };
+    userStore.set(session.data.user as User);
+    ready = true;
     await workspaceStore.load();
   });
 </script>
 
 <div class="flex h-screen overflow-hidden bg-background">
-  {#if user}
-    <Sidebar {user} />
+  {#if ready}
+    <Sidebar />
     <main class="flex-1 overflow-y-auto">
       {@render children()}
     </main>

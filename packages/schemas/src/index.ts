@@ -31,6 +31,20 @@ export const WorkspaceUpdateSchema = v.object({
 export type WorkspaceCreateInput = v.InferInput<typeof WorkspaceCreateSchema>;
 export type WorkspaceUpdateInput = v.InferInput<typeof WorkspaceUpdateSchema>;
 
+// ── Workspace member schemas ──────────────────────────────────────────────────
+
+export const WorkspaceMemberInviteSchema = v.object({
+  userId: v.pipe(v.string(), v.minLength(1)),
+  role: v.optional(v.picklist(["owner", "member"]), "member"),
+});
+
+export const WorkspaceMemberUpdateSchema = v.object({
+  role: v.picklist(["owner", "member"]),
+});
+
+export type WorkspaceMemberInviteInput = v.InferInput<typeof WorkspaceMemberInviteSchema>;
+export type WorkspaceMemberUpdateInput = v.InferInput<typeof WorkspaceMemberUpdateSchema>;
+
 // ── Page schemas ──────────────────────────────────────────────────────────────
 
 export const PageCreateSchema = v.object({
@@ -53,9 +67,15 @@ export const PageReorderSchema = v.object({
   order: v.number(),
 });
 
+export const PageVersionSaveSchema = v.object({
+  title: v.pipe(v.string(), v.minLength(1)),
+  content: v.string(),
+});
+
 export type PageCreateInput = v.InferInput<typeof PageCreateSchema>;
 export type PageUpdateInput = v.InferInput<typeof PageUpdateSchema>;
 export type PageReorderInput = v.InferInput<typeof PageReorderSchema>;
+export type PageVersionSaveInput = v.InferInput<typeof PageVersionSaveSchema>;
 
 // ── Upload schemas ────────────────────────────────────────────────────────────
 

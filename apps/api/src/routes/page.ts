@@ -59,9 +59,9 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   .get(
     "/",
     async ({ query, session }) => {
-      const { workspaceId, limit = 100, offset = 0 } = query as QueryDto
-      const limit = Math.min(Number(limit), 200);
-      const offset = Number(offset);
+      const { workspaceId, limit: rawLimit = 100, offset: rawOffset = 0 } = query as QueryDto;
+      const limit = Math.min(Number(rawLimit), 200);
+      const offset = Number(rawOffset);
       await ensureMember(workspaceId, session.user.id);
       return db.query.page.findMany({
         where: and(
@@ -159,7 +159,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
       // Validate parentId belongs to the same workspace (prevent cross-workspace page stealing)
       if (body.parentId) {
         const parent = await db.query.page.findFirst({
-          where: eq(page.id, parentId),
+          where: eq(page.id, body.parentId),
         });
         if (!parent || parent.workspaceId !== existing.workspaceId) {
           throw new BadRequestError("Parent page does not belong to the same workspace");

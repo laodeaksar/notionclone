@@ -53,17 +53,12 @@ function createPageStore() {
     async load(workspaceId: string) {
       update((s) => ({ ...s, loading: true, error: null }));
       try {
-        const res = await fetch(`/api/pages?workspaceId=${workspaceId}`, {
-          credentials: "include",
+        const { data, error } = await api.api.pages.get({
+          query: { workspaceId },
         });
-        if (!res.ok) throw new Error("Failed to load pages");
-        const pages = (await res.json()) as Page[];
-        update((s) => ({
-          ...s,
-          pages,
-          tree: buildTree(pages),
-          loading: false,
-        }));
+        if (error) throw new Error(String(error));
+        const pages = (data as unknown as Page[]) ?? [];
+        update((s) => ({ ...s, pages, tree: buildTree(pages), loading: false }));
       } catch (e) {
         update((s) => ({ ...s, error: String(e), loading: false }));
       }
@@ -84,7 +79,12 @@ function createPageStore() {
       const updated = data as unknown as Page;
       update((s) => {
         const pages = s.pages.map((p) => (p.id === id ? updated : p));
-        return { ...s, pages, tree: buildTree(pages), current: s.current?.id === id ? updated : s.current };
+        return {
+          ...s,
+          pages,
+          tree: buildTree(pages),
+          current: s.current?.id === id ? updated : s.current,
+        };
       });
       return updated;
     },
@@ -92,11 +92,19 @@ function createPageStore() {
       await api.api.pages({ id }).delete();
       update((s) => {
         const pages = s.pages.filter((p) => p.id !== id);
-        return { ...s, pages, tree: buildTree(pages), current: s.current?.id === id ? null : s.current };
+        return {
+          ...s,
+          pages,
+          tree: buildTree(pages),
+          current: s.current?.id === id ? null : s.current,
+        };
       });
     },
     setCurrent(page: Page | null) {
       update((s) => ({ ...s, current: page }));
+    },
+    reset() {
+      set({ pages: [], tree: [], current: null, loading: false, error: null });
     },
   };
 }
