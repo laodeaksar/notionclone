@@ -2,3 +2,5 @@
 - [Version history feature](version-history.md) — page_version table + 3 API endpoints + VersionHistory.svelte panel with save/restore; content stored as Tiptap JSON string.
 - [Drizzle self-referential FK](drizzle-self-ref-fk.md) — use AnyPgColumn from drizzle-orm/pg-core as return type annotation for self-referential references() callbacks.
 - [Elysia error handler codes](elysia-error-codes.md) — must handle NOT_FOUND code explicitly in onError or Elysia 404s log as "[Internal Error]".
+- [Tailwind v4 + Vite setup](tailwind-v4-vite.md) — use @tailwindcss/vite plugin; delete postcss.config.js entirely; use @import "tailwindcss" + @theme inline in app.css.
+- [Neon vs postgres-js](neon-db-setup.md) — production uses @neondatabase/serverless + drizzle-orm/neon-http; dev uses postgres.js; switched via NODE_ENV with top-level await dynamic imports.

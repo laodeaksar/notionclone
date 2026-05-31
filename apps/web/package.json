@@ -31,13 +31,14 @@
     "yjs": "^13.6.27"
   },
   "devDependencies": {
-    "api": "workspace:*",
-    "elysia": "^1.4.28",
     "@sveltejs/adapter-node": "^5.2.12",
     "@sveltejs/adapter-vercel": "6.3.3",
     "@sveltejs/kit": "^2.21.1",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "@tailwindcss/vite": "^4.3.0",
+    "api": "workspace:*",
     "autoprefixer": "^10.4.21",
+    "elysia": "^1.4.28",
     "svelte-check": "^4.2.1",
     "tailwindcss": "^4.3.0",
     "typescript": "^5.8.3",
