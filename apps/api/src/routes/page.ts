@@ -47,6 +47,12 @@ const VersionSchema = t.Object({
 });
 type VersionDto = Static<typeof VersionSchema>;
 
+const QueryVersionSchema = t.Object({
+        limit: t.Optional(t.Numeric()),
+        offset: t.Optional(t.Numeric()),
+      });
+type QueryVersionDTO = Static<typeof QueryVersionSchema>;
+
 const ReorderSchema = t.Object({
   parentId: t.Optional(t.Nullable(t.String())),
   order: t.Number(),
@@ -59,7 +65,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   .get(
     "/",
     async ({ query, session }) => {
-      const { workspaceId, limit: rawLimit = 100, offset: rawOffset = 0 } = query as QueryDto;
+      const { workspaceId, limit: rawLimit = 100, offset: rawOffset = 0 } = query as unknown as QueryDto;
       const limit = Math.min(Number(rawLimit), 200);
       const offset = Number(rawOffset);
       await ensureMember(workspaceId, session.user.id);
@@ -157,7 +163,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
       await ensureMember(existing.workspaceId, session.user.id);
 
       // Validate parentId belongs to the same workspace (prevent cross-workspace page stealing)
-      if (body.parentId) {
+      if (parentId) {
         const parent = await db.query.page.findFirst({
           where: eq(page.id, body.parentId),
         });
@@ -185,13 +191,14 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   .get(
     "/:id/versions",
     async ({ params, query, session }) => {
+      const { limit: rawLimit = 20, offset: rawOffset = 0 } = query as unknown as QueryVersionDTO;
       const existing = await db.query.page.findFirst({
         where: eq(page.id, params.id),
       });
       if (!existing) throw new NotFoundError("Page");
       await ensureMember(existing.workspaceId, session.user.id);
-      const limit = Math.min(Number(query.limit ?? 20), 50);
-      const offset = Number(query.offset ?? 0);
+      const limit = Math.min(Number(rawLimit), 50);
+      const offset = Number(rawOffset);
       return db.query.pageVersion.findMany({
         where: eq(pageVersion.pageId, params.id),
         with: { savedByUser: { columns: { id: true, name: true, email: true } } },
@@ -201,10 +208,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
       });
     },
     {
-      query: t.Object({
-        limit: t.Optional(t.Numeric()),
-        offset: t.Optional(t.Numeric()),
-      }),
+      query: QueryVersionSchema,
     }
   )
   // POST /api/pages/:id/versions
