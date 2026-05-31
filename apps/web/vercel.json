@@ -10,8 +10,5 @@
       "source": "/api/:path*",
       "destination": "https://notionclone-api.vercel.app/api/:path*"
     }
-  ],
-  "env": {
-    "PUBLIC_LIVEBLOCKS_KEY": "@public_liveblocks_key"
-  }
+  ]
 }
