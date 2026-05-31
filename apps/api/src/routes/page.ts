@@ -165,7 +165,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
       // Validate parentId belongs to the same workspace (prevent cross-workspace page stealing)
       if (parentId) {
         const parent = await db.query.page.findFirst({
-          where: eq(page.id, body.parentId),
+          where: eq(page.id, parentId),
         });
         if (!parent || parent.workspaceId !== existing.workspaceId) {
           throw new BadRequestError("Parent page does not belong to the same workspace");
@@ -175,8 +175,8 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
       const [updated] = await db
         .update(page)
         .set({
-          parentId: parentId ?? null,
-          order: order,
+          parentId,
+          order,
           updatedAt: new Date(),
         })
         .where(eq(page.id, params.id))
