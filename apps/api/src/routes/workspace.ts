@@ -16,7 +16,7 @@ function slugify(name: string): string {
   );
 }
 
-const CreateWorkspaceSchema = t.Object({
+const WorkspaceSchema = t.Object({
   name: t.String({ minLength: 1, maxLength: 100 }),
   description: t.Optional(t.String()),
 });
@@ -48,12 +48,13 @@ export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
   .post(
     "/",
     async ({ body, session }) => {
+      const {name, description} = body as typeof WorkspaceSchema.static;
       const id = nanoid();
-      const slug = slugify(body.name);
+      const slug = slugify(name);
       const ws = await db.transaction(async (tx) => {
         const [newWs] = await tx
           .insert(workspace)
-          .values({ id, name: body.name, description: body.description, slug })
+          .values({ id, name, description, slug })
           .returning();
         await tx.insert(workspaceMember).values({
           id: nanoid(),
@@ -66,7 +67,7 @@ export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
       return ws;
     },
     {
-      body: CreateWorkspaceSchema,
+      body: WorkspaceSchema,
     }
   )
   // GET /api/workspaces/:id
@@ -85,6 +86,7 @@ export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
   .patch(
     "/:id",
     async ({ params, body, session }) => {
+      const data = body as Partial<typeof WorkspaceSchema.static>;
       const member = await db.query.workspaceMember.findFirst({
         where: and(
           eq(workspaceMember.workspaceId, params.id),
@@ -95,16 +97,13 @@ export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
       if (member.role !== "owner") throw new ForbiddenError();
       const [updated] = await db
         .update(workspace)
-        .set({ ...body, updatedAt: new Date() })
+        .set({ ...data, updatedAt: new Date() })
         .where(eq(workspace.id, params.id))
         .returning();
       return updated;
     },
     {
-      body: t.Object({
-        name: t.Optional(t.String({ minLength: 1, maxLength: 100 })),
-        description: t.Optional(t.String()),
-      }),
+      body: WorkspaceSchema, 
     }
   )
   // DELETE /api/workspaces/:id
