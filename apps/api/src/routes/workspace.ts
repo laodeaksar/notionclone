@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia";
+import { type Static } from "@sinclair/typebox";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, workspace, workspaceMember } from "@notion-clone/db";
@@ -20,6 +21,7 @@ const WorkspaceSchema = t.Object({
   name: t.String({ minLength: 1, maxLength: 100 }),
   description: t.Optional(t.String()),
 });
+type WorkspaceSchemaDTO = Static<typeof WorkspaceSchema>;
 
 export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
   .use(authMiddleware)
@@ -48,7 +50,7 @@ export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
   .post(
     "/",
     async ({ body, session }) => {
-      const {name, description} = body as typeof WorkspaceSchema.static;
+      const {name, description} = body as WorkspaceSchemaDTO;
       const id = nanoid();
       const slug = slugify(name);
       const ws = await db.transaction(async (tx) => {
@@ -86,7 +88,7 @@ export const workspaceRoutes = new Elysia({ prefix: "/api/workspaces" })
   .patch(
     "/:id",
     async ({ params, body, session }) => {
-      const data = body as Partial<typeof WorkspaceSchema.static>;
+      const data = body as Partial<WorkspaceSchemaDTO>;
       const member = await db.query.workspaceMember.findFirst({
         where: and(
           eq(workspaceMember.workspaceId, params.id),

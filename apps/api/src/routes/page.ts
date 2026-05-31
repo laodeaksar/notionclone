@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia";
+import { type Static } from "@sinclair/typebox";
 import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, page, pageVersion, workspaceMember } from "@notion-clone/db";
@@ -16,18 +17,55 @@ async function ensureMember(workspaceId: string, userId: string) {
   return member;
 }
 
+const CreatePageSchema = t.Object({
+  title: t.String(),
+  workspaceId: t.String(),
+  parentId: t.Optional(t.String()),
+  icon: t.Optional(t.String()),
+  coverImage: t.Optional(t.String()),
+});
+type CreatePageDto = Static<typeof CreatePageSchema>;
+
+const UpdatePageSchema = t.Object({
+  title: t.Optional(t.String()),
+  icon: t.Optional(t.String()),
+  coverImage: t.Optional(t.String()),
+  parentId: t.Optional(t.Nullable(t.String())),
+});
+type UpdatePageDto = Static<typeof UpdatePageSchema>;
+
+const QuerySchema = t.Object({
+  workspaceId: t.String(),
+  limit: t.Optional(t.Numeric()),
+  offset: t.Optional(t.Numeric()),
+});
+type QueryDto = Static<typeof QuerySchema>;
+
+const VersionSchema = t.Object({
+  title: t.String(),
+  content: t.String(),
+});
+type VersionDto = Static<typeof VersionSchema>;
+
+const ReorderSchema = t.Object({
+  parentId: t.Optional(t.Nullable(t.String())),
+  order: t.Number(),
+});
+type ReorderDto = Static<typeof ReorderSchema>;
+
 export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   .use(authMiddleware)
   // GET /api/pages?workspaceId=&limit=&offset=
   .get(
     "/",
     async ({ query, session }) => {
-      const limit = Math.min(Number(query.limit ?? 100), 200);
-      const offset = Number(query.offset ?? 0);
-      await ensureMember(query.workspaceId, session.user.id);
+      const { workspaceId, limit = 100, offset = 0 } = query as QueryDto
+      const limit = Math.min(Number(limit), 200);
+      const offset = Number(offset);
+      await ensureMember(workspaceId, session.user.id);
       return db.query.page.findMany({
         where: and(
-          eq(page.workspaceId, query.workspaceId),
+          eq(page.workspaceId, workspaceId),
           eq(page.isArchived, false)
         ),
         orderBy: (p, { asc }) => [asc(p.order), asc(p.createdAt)],
@@ -36,40 +74,31 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
       });
     },
     {
-      query: t.Object({
-        workspaceId: t.String(),
-        limit: t.Optional(t.Numeric()),
-        offset: t.Optional(t.Numeric()),
-      }),
+      query: QuerySchema,
     }
   )
   // POST /api/pages
   .post(
     "/",
     async ({ body, session }) => {
-      await ensureMember(body.workspaceId, session.user.id);
+      const { title, workspaceId, parentId, icon, coverImage} = body as CreatePageDto;
+      await ensureMember(workspaceId, session.user.id);
       const [newPage] = await db
         .insert(page)
         .values({
           id: nanoid(),
-          title: body.title || "Untitled",
-          workspaceId: body.workspaceId,
-          parentId: body.parentId ?? null,
-          icon: body.icon ?? null,
-          coverImage: body.coverImage ?? null,
+          title: title || "Untitled",
+          workspaceId: workspaceId,
+          parentId: parentId ?? null,
+          icon: icon ?? null,
+          coverImage: coverImage ?? null,
           createdBy: session.user.id,
         })
         .returning();
       return newPage;
     },
     {
-      body: t.Object({
-        title: t.String(),
-        workspaceId: t.String(),
-        parentId: t.Optional(t.String()),
-        icon: t.Optional(t.String()),
-        coverImage: t.Optional(t.String()),
-      }),
+      body: CreatePageSchema,
     }
   )
   // GET /api/pages/:id
@@ -86,6 +115,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   .patch(
     "/:id",
     async ({ params, body, session }) => {
+      const data = body as UpdatePageDto;
       const existing = await db.query.page.findFirst({
         where: eq(page.id, params.id),
       });
@@ -93,18 +123,13 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
       await ensureMember(existing.workspaceId, session.user.id);
       const [updated] = await db
         .update(page)
-        .set({ ...body, updatedAt: new Date() })
+        .set({ ...data, updatedAt: new Date() })
         .where(eq(page.id, params.id))
         .returning();
       return updated;
     },
     {
-      body: t.Object({
-        title: t.Optional(t.String()),
-        icon: t.Optional(t.String()),
-        coverImage: t.Optional(t.String()),
-        parentId: t.Optional(t.Nullable(t.String())),
-      }),
+      body: UpdatePageSchema,
     }
   )
   // DELETE /api/pages/:id
@@ -124,6 +149,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   .patch(
     "/:id/reorder",
     async ({ params, body, session }) => {
+      const { parentId, order } = body as ReorderDto;
       const existing = await db.query.page.findFirst({
         where: eq(page.id, params.id),
       });
@@ -133,7 +159,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
       // Validate parentId belongs to the same workspace (prevent cross-workspace page stealing)
       if (body.parentId) {
         const parent = await db.query.page.findFirst({
-          where: eq(page.id, body.parentId),
+          where: eq(page.id, parentId),
         });
         if (!parent || parent.workspaceId !== existing.workspaceId) {
           throw new BadRequestError("Parent page does not belong to the same workspace");
@@ -143,8 +169,8 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
       const [updated] = await db
         .update(page)
         .set({
-          parentId: body.parentId ?? null,
-          order: body.order,
+          parentId: parentId ?? null,
+          order: order,
           updatedAt: new Date(),
         })
         .where(eq(page.id, params.id))
@@ -152,10 +178,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
       return updated;
     },
     {
-      body: t.Object({
-        parentId: t.Optional(t.Nullable(t.String())),
-        order: t.Number(),
-      }),
+      body: ReorderSchema,
     }
   )
   // GET /api/pages/:id/versions
@@ -188,6 +211,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
   .post(
     "/:id/versions",
     async ({ params, body, session }) => {
+    const { title, content } = body as VersionDto;
       const existing = await db.query.page.findFirst({
         where: eq(page.id, params.id),
       });
@@ -198,8 +222,8 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
         .values({
           id: nanoid(),
           pageId: params.id,
-          title: body.title,
-          content: body.content,
+          title: title,
+          content: content,
           icon: existing.icon,
           coverImage: existing.coverImage,
           savedBy: session.user.id,
@@ -208,10 +232,7 @@ export const pageRoutes = new Elysia({ prefix: "/api/pages" })
       return version;
     },
     {
-      body: t.Object({
-        title: t.String(),
-        content: t.String(),
-      }),
+      body: VersionSchema,
     }
   )
   // POST /api/pages/:id/versions/:versionId/restore
