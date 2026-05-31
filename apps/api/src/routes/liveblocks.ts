@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia";
+import { type Static } from "@sinclair/typebox";
 import { Liveblocks } from "@liveblocks/node";
 import { eq, and } from "drizzle-orm";
 import { db, page, workspaceMember } from "@notion-clone/db";
@@ -19,13 +20,18 @@ function getLiveblocks() {
   return new Liveblocks({ secret });
 }
 
+const LiveblocksAuthSchema = t.Object({ room: t.String() });
+type LiveblocksAuthDto = Static<typeof LiveblocksAuthSchema>;
+
 export const liveblocksRoutes = new Elysia()
   .use(authMiddleware)
   .post(
     "/api/liveblocks-auth",
     async ({ body, session }) => {
+      const { room } = body as LiveblocksAuthDto;
+
       const p = await db.query.page.findFirst({
-        where: eq(page.id, body.room),
+        where: eq(page.id, room),
       });
       if (!p) throw new NotFoundError("Page");
 
@@ -46,9 +52,9 @@ export const liveblocksRoutes = new Elysia()
           },
         }
       );
-      liveblocksSession.allow(body.room, liveblocksSession.FULL_ACCESS);
+      liveblocksSession.allow(room, liveblocksSession.FULL_ACCESS);
       const { status, body: responseBody } = await liveblocksSession.authorize();
       return new Response(responseBody, { status });
     },
-    { body: t.Object({ room: t.String() }) }
+    { body: LiveblocksAuthSchema }
   );
