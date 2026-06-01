@@ -1,6 +1,7 @@
 - [pnpm PATH setup](pnpm-path.md) — pnpm must be run with Node.js 22 in PATH; use the wrapper pattern in all workflow commands.
 - [Version history feature](version-history.md) — page_version table + 3 API endpoints + VersionHistory.svelte panel with save/restore; content stored as Tiptap JSON string.
-- [Drizzle self-referential FK](drizzle-self-ref-fk.md) — use AnyPgColumn from drizzle-orm/pg-core as return type annotation for self-referential references() callbacks.
-- [Elysia error handler codes](elysia-error-codes.md) — must handle NOT_FOUND code explicitly in onError or Elysia 404s log as "[Internal Error]".
+- [Drizzle self-referential FK](drizzle-self-ref-fk.md) — use AnySQLiteColumn (now SQLite) for self-referential references() callbacks.
+- [Hono+D1 migration](hono-d1-migration.md) — full backend migrated from Elysia+Neon to Hono+CF D1; key patterns and gotchas documented.
 - [Tailwind v4 + Vite setup](tailwind-v4-vite.md) — use @tailwindcss/vite plugin; delete postcss.config.js entirely; use @import "tailwindcss" + @theme inline in app.css.
-- [Neon vs postgres-js](neon-db-setup.md) — production uses @neondatabase/serverless + drizzle-orm/neon-http; dev uses postgres.js; switched via NODE_ENV with top-level await dynamic imports.
+- [kysely-shim-cf-workers](kysely-shim-cf-workers.md) — better-auth + wrangler bundling needs a kysely compat shim; DEFAULT_MIGRATION_* removed from kysely top-level in 0.28+.
+- [wrangler-dev-replit](wrangler-dev-replit.md) — wrangler dev needs ip="0.0.0.0" and port=3000 in wrangler.toml [dev] section for Replit workflow port detection.

@@ -1,44 +1,53 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { organization } from "better-auth/plugins";
-import { db, user, session, account, verification } from "@notion-clone/db";
+import { getDb, user, session, account, verification } from "@notion-clone/db";
 
-const extraOrigins = (process.env.ALLOWED_ORIGINS ?? "")
-  .split(",")
-  .map((o) => o.trim())
-  .filter(Boolean);
+export interface AuthEnv {
+  secret: string;
+  url?: string;
+  allowedOrigins?: string[];
+}
 
-export const auth = betterAuth({
-  database: drizzleAdapter(db, {
-    provider: "pg",
-    schema: { user, session, account, verification },
-  }),
-  emailAndPassword: {
-    enabled: true,
-    requireEmailVerification: false,
-  },
-  session: {
-    cookieCache: {
+/**
+ * Buat instance betterAuth baru dari D1 binding.
+ * Dipanggil per-request karena D1Database hanya tersedia via c.env.DB.
+ */
+export function getAuth(d1: D1Database, env: AuthEnv) {
+  const db = getDb(d1);
+  const extraOrigins = env.allowedOrigins ?? [];
+
+  return betterAuth({
+    secret: env.secret,
+    database: drizzleAdapter(db, {
+      provider: "sqlite",
+      schema: { user, session, account, verification },
+    }),
+    emailAndPassword: {
       enabled: true,
-      maxAge: 60 * 5,
+      requireEmailVerification: false,
     },
-  },
-  advanced: {
-    cookiePrefix: "notion-clone",
-    defaultCookieAttributes: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+    session: {
+      cookieCache: {
+        enabled: true,
+        maxAge: 60 * 5,
+      },
     },
-  },
-  trustedOrigins: [
-    "http://localhost:5000",
-    "http://localhost:5173",
-    "http://0.0.0.0:5000",
-    process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
-    ...extraOrigins,
-  ],
-  plugins: [organization()],
-});
+    advanced: {
+      cookiePrefix: "notion-clone",
+      defaultCookieAttributes: {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+      },
+    },
+    trustedOrigins: [
+      "http://localhost:5000",
+      "http://localhost:5173",
+      "http://0.0.0.0:5000",
+      env.url ?? "http://localhost:3000",
+      ...extraOrigins,
+    ],
+  });
+}
 
-export type Auth = typeof auth;
+export type Auth = ReturnType<typeof getAuth>;

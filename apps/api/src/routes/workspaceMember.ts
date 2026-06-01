@@ -1,12 +1,14 @@
-import { Elysia, t } from "elysia";
-import { type Static } from "@sinclair/typebox";
+import { Hono } from "hono";
+import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { db, workspaceMember, user } from "@notion-clone/db";
+import { getDb, workspaceMember, user } from "@notion-clone/db";
+import type { DB } from "@notion-clone/db";
 import { authMiddleware } from "../middleware/auth.js";
 import { NotFoundError, ForbiddenError, BadRequestError } from "../errors.js";
+import type { Env, Variables } from "../types.js";
 
-async function ensureOwner(workspaceId: string, userId: string) {
+async function ensureOwner(db: DB, workspaceId: string, userId: string) {
   const member = await db.query.workspaceMember.findFirst({
     where: and(
       eq(workspaceMember.workspaceId, workspaceId),
@@ -18,33 +20,39 @@ async function ensureOwner(workspaceId: string, userId: string) {
   return member;
 }
 
-const AddMemberSchema = t.Object({
-  userId: t.String(),
-  role: t.Optional(t.Union([t.Literal("owner"), t.Literal("member")])),
+const AddMemberSchema = z.object({
+  userId: z.string(),
+  role: z.enum(["owner", "member"]).optional(),
 });
-type AddMemberDto = Static<typeof AddMemberSchema>;
 
-const UpdateMemberRoleSchema = t.Object({
-  role: t.Union([t.Literal("owner"), t.Literal("member")]),
+const UpdateMemberRoleSchema = z.object({
+  role: z.enum(["owner", "member"]),
 });
-type UpdateMemberRoleDto = Static<typeof UpdateMemberRoleSchema>;
 
-export const workspaceMemberRoutes = new Elysia({
-  prefix: "/api/workspaces/:id/members",
-})
-  .use(authMiddleware)
-  // GET /api/workspaces/:id/members — list all members with user info
-  .get("/", async ({ params, session }) => {
+// Route dipasang di app.ts sebagai: app.route("/api/workspaces", workspaceMemberRoutes)
+// sehingga path di sini relative: /:id/members, /:id/members/:memberId, dst.
+export const workspaceMemberRoutes = new Hono<{
+  Bindings: Env;
+  Variables: Variables;
+}>()
+  .use("*", authMiddleware)
+
+  // GET /api/workspaces/:id/members
+  .get("/:id/members", async (c) => {
+    const db = getDb(c.env.DB);
+    const session = c.get("session");
+    const workspaceId = c.req.param("id");
+
     const isMember = await db.query.workspaceMember.findFirst({
       where: and(
-        eq(workspaceMember.workspaceId, params.id),
+        eq(workspaceMember.workspaceId, workspaceId),
         eq(workspaceMember.userId, session.user.id)
       ),
     });
     if (!isMember) throw new ForbiddenError();
 
-    return db.query.workspaceMember.findMany({
-      where: eq(workspaceMember.workspaceId, params.id),
+    const members = await db.query.workspaceMember.findMany({
+      where: eq(workspaceMember.workspaceId, workspaceId),
       with: {
         user: {
           columns: { id: true, name: true, email: true, image: true },
@@ -52,91 +60,90 @@ export const workspaceMemberRoutes = new Elysia({
       },
       orderBy: (m, { asc }) => [asc(m.createdAt)],
     });
+    return c.json(members);
   })
-  // POST /api/workspaces/:id/members — add member by userId
-  .post(
-    "/",
-    async ({ params, body, session }) => {
-      await ensureOwner(params.id, session.user.id);
-      const { userId, role = "member" } = body as AddMemberDto;
 
-      const targetUser = await db.query.user.findFirst({
-        where: eq(user.id, userId),
-        columns: { id: true },
-      });
-      if (!targetUser) throw new NotFoundError("User");
+  // POST /api/workspaces/:id/members
+  .post("/:id/members", async (c) => {
+    const db = getDb(c.env.DB);
+    const session = c.get("session");
+    const workspaceId = c.req.param("id");
+    await ensureOwner(db, workspaceId, session.user.id);
 
-      const existing = await db.query.workspaceMember.findFirst({
-        where: and(
-          eq(workspaceMember.workspaceId, params.id),
-          eq(workspaceMember.userId, userId)
-        ),
-      });
-      if (existing) throw new BadRequestError("User is already a member of this workspace");
+    const { userId, role = "member" } = AddMemberSchema.parse(
+      await c.req.json()
+    );
 
-      const [member] = await db
-        .insert(workspaceMember)
-        .values({
-          id: nanoid(),
-          workspaceId: params.id,
-          userId,
-          role,
-        })
-        .returning();
-      return member;
-    },
-    {
-      body: AddMemberSchema,
-    }
-  )
-  // PATCH /api/workspaces/:id/members/:memberId — update role
-  .patch(
-    "/:memberId",
-    async ({ params, body, session }) => {
-      await ensureOwner(params.id, session.user.id);
-      const { role } = body as UpdateMemberRoleDto;
+    const targetUser = await db.query.user.findFirst({
+      where: eq(user.id, userId),
+      columns: { id: true },
+    });
+    if (!targetUser) throw new NotFoundError("User");
 
-      const target = await db.query.workspaceMember.findFirst({
-        where: and(
-          eq(workspaceMember.id, params.memberId),
-          eq(workspaceMember.workspaceId, params.id)
-        ),
-      });
-      if (!target) throw new NotFoundError("Member");
+    const existing = await db.query.workspaceMember.findFirst({
+      where: and(
+        eq(workspaceMember.workspaceId, workspaceId),
+        eq(workspaceMember.userId, userId)
+      ),
+    });
+    if (existing)
+      throw new BadRequestError("User is already a member of this workspace");
 
-      // Prevent demoting self (owner cannot demote themselves if last owner)
-      if (target.userId === session.user.id) {
-        throw new BadRequestError("Cannot change your own role");
-      }
+    const [member] = await db
+      .insert(workspaceMember)
+      .values({ id: nanoid(), workspaceId, userId, role })
+      .returning();
+    return c.json(member, 201);
+  })
 
-      const [updated] = await db
-        .update(workspaceMember)
-        .set({ role })
-        .where(eq(workspaceMember.id, params.memberId))
-        .returning();
-      return updated;
-    },
-    {
-      body: UpdateMemberRoleSchema,
-    }
-  )
-  // DELETE /api/workspaces/:id/members/:memberId — remove member
-  .delete("/:memberId", async ({ params, session }) => {
-    await ensureOwner(params.id, session.user.id);
+  // PATCH /api/workspaces/:id/members/:memberId
+  .patch("/:id/members/:memberId", async (c) => {
+    const db = getDb(c.env.DB);
+    const session = c.get("session");
+    const workspaceId = c.req.param("id");
+    const memberId = c.req.param("memberId");
+    await ensureOwner(db, workspaceId, session.user.id);
+
+    const { role } = UpdateMemberRoleSchema.parse(await c.req.json());
 
     const target = await db.query.workspaceMember.findFirst({
       where: and(
-        eq(workspaceMember.id, params.memberId),
-        eq(workspaceMember.workspaceId, params.id)
+        eq(workspaceMember.id, memberId),
+        eq(workspaceMember.workspaceId, workspaceId)
       ),
     });
     if (!target) throw new NotFoundError("Member");
-    if (target.userId === session.user.id) {
+    if (target.userId === session.user.id)
+      throw new BadRequestError("Cannot change your own role");
+
+    const [updated] = await db
+      .update(workspaceMember)
+      .set({ role })
+      .where(eq(workspaceMember.id, memberId))
+      .returning();
+    return c.json(updated);
+  })
+
+  // DELETE /api/workspaces/:id/members/:memberId
+  .delete("/:id/members/:memberId", async (c) => {
+    const db = getDb(c.env.DB);
+    const session = c.get("session");
+    const workspaceId = c.req.param("id");
+    const memberId = c.req.param("memberId");
+    await ensureOwner(db, workspaceId, session.user.id);
+
+    const target = await db.query.workspaceMember.findFirst({
+      where: and(
+        eq(workspaceMember.id, memberId),
+        eq(workspaceMember.workspaceId, workspaceId)
+      ),
+    });
+    if (!target) throw new NotFoundError("Member");
+    if (target.userId === session.user.id)
       throw new BadRequestError("Cannot remove yourself from the workspace");
-    }
 
     await db
       .delete(workspaceMember)
-      .where(eq(workspaceMember.id, params.memberId));
-    return { success: true };
+      .where(eq(workspaceMember.id, memberId));
+    return c.json({ success: true });
   });

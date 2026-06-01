@@ -14,10 +14,11 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "better-auth": "^1.2.8",
+    "better-auth": "^1.6.13",
     "@notion-clone/db": "workspace:*"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.0.0",
     "typescript": "^5.8.3"
   }
 }

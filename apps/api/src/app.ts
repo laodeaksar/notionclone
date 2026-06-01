@@ -1,42 +1,21 @@
-import { Elysia } from "elysia";
-import { cors } from "@elysiajs/cors";
-import { auth } from "@notion-clone/auth";
-import { HttpError } from "./errors.js";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { getAuth } from "@notion-clone/auth";
 import { workspaceRoutes } from "./routes/workspace.js";
 import { workspaceMemberRoutes } from "./routes/workspaceMember.js";
 import { pageRoutes } from "./routes/page.js";
 import { uploadRoutes } from "./routes/upload.js";
 import { liveblocksRoutes } from "./routes/liveblocks.js";
+import { HttpError } from "./errors.js";
+import type { Env, Variables } from "./types.js";
 
-const envOrigins = (process.env.ALLOWED_ORIGINS ?? "")
-  .split(",")
-  .map((o) => o.trim())
-  .filter(Boolean);
-
-const devOrigins =
-  process.env.NODE_ENV !== "production"
-    ? [
-        "http://localhost:5000",
-        "http://0.0.0.0:5000",
-        "http://localhost:5173",
-        "http://0.0.0.0:5173",
-      ]
-    : [];
-
-const allowedOrigins = [...envOrigins, ...devOrigins];
-
-// ── In-memory rate limiter ────────────────────────────────────────────────────
+// ── In-memory rate limiter ─────────────────────────────────────────────────────
+// Catatan: Workers tidak punya persistent memory antar request — map ini
+// hidup per isolate (di-reset saat CF recycles isolate).
+// Untuk production yang ketat, gunakan Durable Objects atau KV.
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_WINDOW_MS = 60_000; // 1 minute
-const RATE_MAX = 120;          // requests per window per IP
-
-// Periodically clean up expired entries to avoid memory growth
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitMap) {
-    if (entry.resetAt < now) rateLimitMap.delete(key);
-  }
-}, RATE_WINDOW_MS);
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 120;
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
@@ -52,52 +31,80 @@ function checkRateLimit(ip: string): boolean {
 
 // ── App ───────────────────────────────────────────────────────────────────────
 
-export const app = new Elysia()
-  .use(
-    cors({
-      origin: allowedOrigins,
-      credentials: true,
-      allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
-      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    })
-  )
-  .onBeforeHandle(({ request, set }) => {
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      request.headers.get("x-real-ip") ??
-      "unknown";
-    if (!checkRateLimit(ip)) {
-      set.status = 429;
-      return { error: "Too many requests. Please try again later." };
-    }
-  })
-  .onError(({ error, set, code }) => {
-    if (code === "VALIDATION") {
-      set.status = 400;
-      return { error: "Validation error" };
-    }
-    if (code === "NOT_FOUND") {
-      set.status = 404;
-      return { error: "Not found" };
-    }
-    if (error instanceof HttpError) {
-      set.status = error.status;
-      return { error: error.message };
-    }
-    console.error("[Internal Error]", error);
-    const currentStatus =
-      typeof set.status === "number" && set.status !== 200
-        ? set.status
-        : 500;
-    set.status = currentStatus;
-    return { error: "Internal server error" };
-  })
-  .all("/api/auth/*", ({ request }) => auth.handler(request))
-  .use(workspaceRoutes)
-  .use(workspaceMemberRoutes)
-  .use(pageRoutes)
-  .use(uploadRoutes)
-  .use(liveblocksRoutes)
-  .get("/health", () => ({ status: "ok", ts: new Date().toISOString() }));
+export const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-export type App = typeof app;
+// ── CORS ──────────────────────────────────────────────────────────────────────
+app.use("*", async (c, next) => {
+  const envOrigins = (c.env.ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  const devOrigins =
+    c.env.NODE_ENV !== "production"
+      ? [
+          "http://localhost:5000",
+          "http://0.0.0.0:5000",
+          "http://localhost:5173",
+          "http://0.0.0.0:5173",
+        ]
+      : [];
+
+  const allowedOrigins = [...envOrigins, ...devOrigins];
+
+  return cors({
+    origin: allowedOrigins,
+    credentials: true,
+    allowHeaders: ["Content-Type", "Authorization", "Cookie"],
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  })(c, next);
+});
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+app.use("*", async (c, next) => {
+  const ip =
+    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+    c.req.header("x-real-ip") ??
+    "unknown";
+  if (!checkRateLimit(ip)) {
+    return c.json({ error: "Too many requests. Please try again later." }, 429);
+  }
+  await next();
+});
+
+// ── Auth routes (better-auth handler) ────────────────────────────────────────
+app.all("/api/auth/*", async (c) => {
+  const auth = getAuth(c.env.DB, {
+    secret: c.env.BETTER_AUTH_SECRET,
+    url: c.env.BETTER_AUTH_URL,
+    allowedOrigins: (c.env.ALLOWED_ORIGINS ?? "")
+      .split(",")
+      .map((o) => o.trim())
+      .filter(Boolean),
+  });
+  return auth.handler(c.req.raw);
+});
+
+// ── Business routes ───────────────────────────────────────────────────────────
+app.route("/api/workspaces", workspaceRoutes);
+app.route("/api/workspaces", workspaceMemberRoutes);
+app.route("/api/pages", pageRoutes);
+app.route("/api/upload", uploadRoutes);
+app.route("/api", liveblocksRoutes);
+
+// ── Health check ──────────────────────────────────────────────────────────────
+app.get("/health", (c) =>
+  c.json({ status: "ok", ts: new Date().toISOString() })
+);
+
+// ── Global error handler ─────────────────────────────────────────────────────
+app.onError((err, c) => {
+  if (err instanceof HttpError) {
+    return c.json({ error: err.message }, err.status as never);
+  }
+  console.error("[Internal Error]", err);
+  return c.json({ error: "Internal server error" }, 500);
+});
+
+// ── 404 ───────────────────────────────────────────────────────────────────────
+app.notFound((c) => c.json({ error: "Not found" }, 404));

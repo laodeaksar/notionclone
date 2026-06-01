@@ -1,19 +1,19 @@
 import {
-  pgTable,
+  sqliteTable,
   text,
-  timestamp,
-  boolean,
   integer,
-  pgEnum,
   index,
-  unique,
-  type AnyPgColumn,
-} from "drizzle-orm/pg-core";
+  uniqueIndex,
+  type AnySQLiteColumn,
+} from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
+
+// ── Types (menggantikan pgEnum — D1/SQLite tidak punya native enum) ────────────
+export type WorkspaceRole = "owner" | "member";
 
 // ── PageVersion ────────────────────────────────────────────────────────────────
 
-export const pageVersion = pgTable(
+export const pageVersion = sqliteTable(
   "page_version",
   {
     id: text("id").primaryKey(),
@@ -27,7 +27,10 @@ export const pageVersion = pgTable(
     savedBy: text("saved_by")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    // SQLite: timestamp disimpan sebagai integer milliseconds
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
   (t) => [
     index("page_version_page_idx").on(t.pageId),
@@ -35,20 +38,23 @@ export const pageVersion = pgTable(
   ]
 );
 
-// ── Enums ─────────────────────────────────────────────────────────────────────
-
-export const workspaceRoleEnum = pgEnum("workspace_role", ["owner", "member"]);
-
 // ── User ──────────────────────────────────────────────────────────────────────
 
-export const user = pgTable("user", {
+export const user = sqliteTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").notNull().default(false),
+  // SQLite: boolean disimpan sebagai integer 0/1
+  emailVerified: integer("email_verified", { mode: "boolean" })
+    .notNull()
+    .default(false),
   image: text("image"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export const userRelations = relations(user, ({ many }) => ({
@@ -60,12 +66,16 @@ export const userRelations = relations(user, ({ many }) => ({
 
 // ── Session ───────────────────────────────────────────────────────────────────
 
-export const session = pgTable("session", {
+export const session = sqliteTable("session", {
   id: text("id").primaryKey(),
-  expiresAt: timestamp("expires_at").notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
   token: text("token").notNull().unique(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   userId: text("user_id")
@@ -79,7 +89,7 @@ export const sessionRelations = relations(session, ({ one }) => ({
 
 // ── Account ───────────────────────────────────────────────────────────────────
 
-export const account = pgTable(
+export const account = sqliteTable(
   "account",
   {
     id: text("id").primaryKey(),
@@ -91,16 +101,22 @@ export const account = pgTable(
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
     idToken: text("id_token"),
-    accessTokenExpiresAt: timestamp("access_token_expires_at"),
-    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+    accessTokenExpiresAt: integer("access_token_expires_at", {
+      mode: "timestamp_ms",
+    }),
+    refreshTokenExpiresAt: integer("refresh_token_expires_at", {
+      mode: "timestamp_ms",
+    }),
     scope: text("scope"),
     password: text("password"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
-  (t) => [
-    index("account_user_idx").on(t.userId),
-  ]
+  (t) => [index("account_user_idx").on(t.userId)]
 );
 
 export const accountRelations = relations(account, ({ one }) => ({
@@ -109,32 +125,38 @@ export const accountRelations = relations(account, ({ one }) => ({
 
 // ── Verification ──────────────────────────────────────────────────────────────
 
-export const verification = pgTable(
+export const verification = sqliteTable(
   "verification",
   {
     id: text("id").primaryKey(),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
-    expiresAt: timestamp("expires_at").notNull(),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).$defaultFn(
+      () => new Date()
+    ),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).$defaultFn(
+      () => new Date()
+    ),
   },
-  (t) => [
-    index("verification_identifier_idx").on(t.identifier),
-  ]
+  (t) => [index("verification_identifier_idx").on(t.identifier)]
 );
 
 // ── Workspace ─────────────────────────────────────────────────────────────────
 
-export const workspace = pgTable(
+export const workspace = sqliteTable(
   "workspace",
   {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     description: text("description"),
     slug: text("slug").notNull().unique(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
   (t) => [index("workspace_slug_idx").on(t.slug)]
 );
@@ -146,7 +168,7 @@ export const workspaceRelations = relations(workspace, ({ many }) => ({
 
 // ── WorkspaceMember ───────────────────────────────────────────────────────────
 
-export const workspaceMember = pgTable(
+export const workspaceMember = sqliteTable(
   "workspace_member",
   {
     id: text("id").primaryKey(),
@@ -156,11 +178,14 @@ export const workspaceMember = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    role: workspaceRoleEnum("role").notNull().default("member"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    // pgEnum diganti text — constraint hanya di TypeScript, bukan DB level
+    role: text("role").$type<WorkspaceRole>().notNull().default("member"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
   (t) => [
-    unique("workspace_member_unique").on(t.workspaceId, t.userId),
+    uniqueIndex("workspace_member_unique").on(t.workspaceId, t.userId),
     index("workspace_member_workspace_idx").on(t.workspaceId),
     index("workspace_member_user_idx").on(t.userId),
   ]
@@ -182,7 +207,7 @@ export const workspaceMemberRelations = relations(
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export const page = pgTable(
+export const page = sqliteTable(
   "page",
   {
     id: text("id").primaryKey(),
@@ -193,17 +218,24 @@ export const page = pgTable(
     workspaceId: text("workspace_id")
       .notNull()
       .references(() => workspace.id, { onDelete: "cascade" }),
-    // Self-referential FK: set null so deleting a parent promotes children to root
-    parentId: text("parent_id").references((): AnyPgColumn => page.id, {
-      onDelete: "set null",
-    }),
+    // Self-referential FK: set null agar anak menjadi root saat parent dihapus
+    parentId: text("parent_id").references(
+      (): AnySQLiteColumn => page.id,
+      { onDelete: "set null" }
+    ),
     createdBy: text("created_by")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     order: integer("order").notNull().default(0),
-    isArchived: boolean("is_archived").notNull().default(false),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    isArchived: integer("is_archived", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
   (t) => [
     index("page_workspace_idx").on(t.workspaceId),
@@ -229,5 +261,8 @@ export const pageRelations = relations(page, ({ one, many }) => ({
 
 export const pageVersionRelations = relations(pageVersion, ({ one }) => ({
   page: one(page, { fields: [pageVersion.pageId], references: [page.id] }),
-  savedByUser: one(user, { fields: [pageVersion.savedBy], references: [user.id] }),
+  savedByUser: one(user, {
+    fields: [pageVersion.savedBy],
+    references: [user.id],
+  }),
 }));

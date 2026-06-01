@@ -1,60 +1,56 @@
-import { Elysia, t } from "elysia";
-import { type Static } from "@sinclair/typebox";
+import { Hono } from "hono";
+import { z } from "zod";
 import { Liveblocks } from "@liveblocks/node";
 import { eq, and } from "drizzle-orm";
-import { db, page, workspaceMember } from "@notion-clone/db";
+import { getDb, page, workspaceMember } from "@notion-clone/db";
 import { authMiddleware } from "../middleware/auth.js";
 import { NotFoundError, ForbiddenError } from "../errors.js";
+import type { Env, Variables } from "../types.js";
 
-if (!process.env.LIVEBLOCKS_SECRET_KEY?.startsWith("sk_")) {
-  console.warn(
-    "[liveblocks] LIVEBLOCKS_SECRET_KEY is not configured. Collaboration features will be unavailable."
-  );
-}
-
-function getLiveblocks() {
-  const secret = process.env.LIVEBLOCKS_SECRET_KEY;
+function getLiveblocks(secret: string) {
   if (!secret?.startsWith("sk_")) {
     throw new Error("LIVEBLOCKS_SECRET_KEY is not configured");
   }
   return new Liveblocks({ secret });
 }
 
-const LiveblocksAuthSchema = t.Object({ room: t.String() });
-type LiveblocksAuthDto = Static<typeof LiveblocksAuthSchema>;
+const LiveblocksAuthSchema = z.object({ room: z.string() });
 
-export const liveblocksRoutes = new Elysia()
-  .use(authMiddleware)
-  .post(
-    "/api/liveblocks-auth",
-    async ({ body, session }) => {
-      const { room } = body as LiveblocksAuthDto;
+// Route dipasang di app.ts sebagai: app.route("/api", liveblocksRoutes)
+export const liveblocksRoutes = new Hono<{
+  Bindings: Env;
+  Variables: Variables;
+}>()
+  .use("*", authMiddleware)
 
-      const p = await db.query.page.findFirst({
-        where: eq(page.id, room),
-      });
-      if (!p) throw new NotFoundError("Page");
+  // POST /api/liveblocks-auth
+  .post("/liveblocks-auth", async (c) => {
+    const db = getDb(c.env.DB);
+    const session = c.get("session");
+    const { room } = LiveblocksAuthSchema.parse(await c.req.json());
 
-      const member = await db.query.workspaceMember.findFirst({
-        where: and(
-          eq(workspaceMember.workspaceId, p.workspaceId),
-          eq(workspaceMember.userId, session.user.id)
-        ),
-      });
-      if (!member) throw new ForbiddenError();
+    const p = await db.query.page.findFirst({
+      where: eq(page.id, room),
+    });
+    if (!p) throw new NotFoundError("Page");
 
-      const liveblocksSession = getLiveblocks().prepareSession(
-        session.user.id,
-        {
-          userInfo: {
-            name: session.user.name,
-            email: session.user.email,
-          },
-        }
-      );
-      liveblocksSession.allow(room, liveblocksSession.FULL_ACCESS);
-      const { status, body: responseBody } = await liveblocksSession.authorize();
-      return new Response(responseBody, { status });
-    },
-    { body: LiveblocksAuthSchema }
-  );
+    const member = await db.query.workspaceMember.findFirst({
+      where: and(
+        eq(workspaceMember.workspaceId, p.workspaceId),
+        eq(workspaceMember.userId, session.user.id)
+      ),
+    });
+    if (!member) throw new ForbiddenError();
+
+    const lb = getLiveblocks(c.env.LIVEBLOCKS_SECRET_KEY);
+    const lbSession = lb.prepareSession(session.user.id, {
+      userInfo: {
+        name: session.user.name,
+        email: session.user.email,
+      },
+    });
+    lbSession.allow(room, lbSession.FULL_ACCESS);
+
+    const { status, body } = await lbSession.authorize();
+    return new Response(body, { status });
+  });
