@@ -8,7 +8,7 @@
     "deploy": "wrangler deploy",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply laodeaksar --local",
-    "db:migrate:prod": "wrangler d1 migrations apply laodeaksar",
+    "db:migrate:prod": "wrangler d1 migrations apply laodeaksar --remote",
     "db:seed": "wrangler d1 execute laodeaksar --local --file=seeds/seed.sql",
     "lint": "tsc --noEmit"
   },
