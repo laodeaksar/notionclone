@@ -36,7 +36,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Get branch expiration date (2 weeks from now)
-        id: get_expiration_date
         run: echo "EXPIRES_AT=$(date -u --date '+14 days' +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
 
       - name: Create Neon Branch
@@ -72,6 +71,21 @@ jobs:
         run: pnpm --filter @notion-clone/db db:push
         env:
           DATABASE_URL: ${{ needs.create_neon_branch.outputs.db_url_with_pooler }}
+
+  schema_diff:
+    name: Post Schema Diff to PR
+    needs: [setup, create_neon_branch, drizzle_push]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Post Schema Diff Comment
+        uses: neondatabase/schema-diff-action@v1
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          compare_branch: preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.branch }}
+          api_key: ${{ secrets.NEON_API_KEY }}
 
   delete_neon_branch:
     name: Delete Neon Branch
