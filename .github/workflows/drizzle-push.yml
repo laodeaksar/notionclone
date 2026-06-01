@@ -1,44 +1,40 @@
-name: Create Neon Branch + Drizzle Push
+name: D1 Migrate (Production)
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/api/drizzle/**.sql'
   workflow_dispatch:
-    inputs:
-      branch_name:
-        description: 'Nama branch Neon'
-        required: true
-        default: 'preview/manual'
-        type: string
 
 concurrency:
-  group: neon-branch-${{ inputs.branch_name }}
+  group: d1-migrate-prod
+  cancel-in-progress: false
 
 jobs:
-  create_and_migrate:
+  migrate:
+    name: Apply D1 Migrations
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Set expiration 14 hari
-        run: echo "EXPIRES_AT=$(date -u --date '+14 days' +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
-      - name: Create Neon Branch
-        id: neon
-        uses: neondatabase/create-branch-action@v6
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          project_id: ${{ vars.NEON_PROJECT_ID }}
-          branch_name: ${{ inputs.branch_name }}
-          api_key: ${{ secrets.NEON_API_KEY }}
-          expires_at: ${{ env.EXPIRES_AT }}
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with: { node-version: '22', cache: 'pnpm' }
+          node-version: '22'
+          cache: 'pnpm'
 
       - name: Install deps
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
-      - name: Drizzle Push ke Neon branch
-        run: pnpm --filter @notion-clone/db db:push
+      - name: Apply migrations → Cloudflare D1
+        run: pnpm --filter api db:migrate:prod
         env:
-          DATABASE_URL: ${{ steps.neon.outputs.db_url_with_pooler }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
