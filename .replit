@@ -23,6 +23,14 @@ args = "Start application"
 task = "workflow.run"
 args = "Start API"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "DB Migrate"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "DB Seed"
+
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -46,6 +54,28 @@ outputType = "console"
 task = "shell.exec"
 args = "bash -c 'NODE_BIN=\"/nix/store/bl6iwirn83qj9r8wng43kfdqd5mfahj8-nodejs-22.22.0/bin\"; export PATH=\"$NODE_BIN:/home/runner/workspace/.npm-global/bin:$PATH\"; pnpm --filter api dev'"
 waitForPort = 3000
+
+[[workflows.workflow]]
+name = "DB Migrate"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter api db:migrate"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "DB Seed"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter api db:seed"
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [[ports]]
 localPort = 3000
