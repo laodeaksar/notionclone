@@ -5,9 +5,12 @@
   import { workspaceStore } from "$lib/stores/workspace.js";
   import { pageStore } from "$lib/stores/page.js";
   import { userStore } from "$lib/stores/user.js";
+  import { themeStore } from "$lib/stores/theme.js";
   import PageTreeItem from "./PageTreeItem.svelte";
   import CreateWorkspaceModal from "./CreateWorkspaceModal.svelte";
   import type { Workspace } from "$lib/stores/workspace.js";
+
+  let theme = $derived($themeStore);
 
   let ws = $derived($workspaceStore);
   let pages = $derived($pageStore);
@@ -122,12 +125,31 @@
           <p class="text-sm font-medium truncate">{user.name}</p>
           <p class="text-xs text-muted-foreground truncate">{user.email}</p>
         </div>
-        <button
-          onclick={logout}
-          class="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent"
-        >
-          Out
-        </button>
+        <div class="flex items-center gap-1">
+          <button
+            onclick={() => themeStore.toggle()}
+            class="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-accent transition-colors"
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label="Toggle theme"
+          >
+            {#if theme === "dark"}
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+              </svg>
+            {:else}
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+              </svg>
+            {/if}
+          </button>
+          <button
+            onclick={logout}
+            class="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent"
+          >
+            Out
+          </button>
+        </div>
       </div>
     {/if}
   {/if}
