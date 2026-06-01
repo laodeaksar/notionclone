@@ -24,6 +24,7 @@ binding = "DB"
 database_name = "notionclone"
 # Isi database_id setelah jalankan: wrangler d1 create notionclone
 database_id = "akan_diisi_setelah_wrangler_d1_create"
+migrations_dir = "drizzle"
 
 # Compatibility fix: @better-auth/kysely-adapter mengimport DEFAULT_MIGRATION_* dari
 # "kysely" main, tapi kysely 0.28+ hanya mengekspornya dari sub-path migration/migrator.
