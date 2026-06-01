@@ -7,9 +7,9 @@
     "dev": "wrangler dev --port 3000",
     "deploy": "wrangler deploy",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "wrangler d1 migrations apply notionclone --local",
-    "db:migrate:prod": "wrangler d1 migrations apply notionclone",
-    "db:seed": "wrangler d1 execute notionclone --local --file=seeds/seed.sql",
+    "db:migrate": "wrangler d1 migrations apply laodeaksar --local",
+    "db:migrate:prod": "wrangler d1 migrations apply laodeaksar",
+    "db:seed": "wrangler d1 execute laodeaksar --local --file=seeds/seed.sql",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
