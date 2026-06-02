@@ -57,8 +57,9 @@ export const PageCreateSchema = v.object({
 
 export const PageUpdateSchema = v.object({
   title: v.optional(v.string()),
-  icon: v.optional(v.string()),
-  coverImage: v.optional(v.string()),
+  icon: v.optional(v.nullable(v.string())),
+  coverImage: v.optional(v.nullable(v.string())),
+  content: v.optional(v.nullable(v.string())),
   parentId: v.optional(v.nullable(v.string())),
 });
 

@@ -1,4 +1,4 @@
-import { writable, derived } from "svelte/store";
+import { writable } from "svelte/store";
 import { api } from "$lib/eden.js";
 
 export interface Workspace {
@@ -8,6 +8,15 @@ export interface Workspace {
   slug: string;
   createdAt: string;
   updatedAt: string;
+}
+
+async function parseError(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { error?: string };
+    return body.error ?? `HTTP ${res.status}`;
+  } catch {
+    return `HTTP ${res.status}`;
+  }
 }
 
 function createWorkspaceStore() {
@@ -28,9 +37,10 @@ function createWorkspaceStore() {
     async load() {
       update((s) => ({ ...s, loading: true, error: null }));
       try {
-        const { data, error } = await api.api.workspaces.get();
-        if (error) throw new Error(String(error));
-        update((s) => ({ ...s, workspaces: (data as unknown as Workspace[]) ?? [], loading: false }));
+        const res = await api.api.workspaces.$get();
+        if (!res.ok) throw new Error(await parseError(res));
+        const workspaces = (await res.json()) as Workspace[];
+        update((s) => ({ ...s, workspaces, loading: false }));
       } catch (e) {
         update((s) => ({ ...s, error: String(e), loading: false }));
       }
@@ -39,14 +49,15 @@ function createWorkspaceStore() {
       update((s) => ({ ...s, current: ws }));
     },
     async create(name: string, description?: string) {
-      const { data, error } = await api.api.workspaces.post({ name, description });
-      if (error) throw new Error(String(error));
-      const ws = data as unknown as Workspace;
+      const res = await api.api.workspaces.$post({ json: { name, description } });
+      if (!res.ok) throw new Error(await parseError(res));
+      const ws = (await res.json()) as Workspace;
       update((s) => ({ ...s, workspaces: [...s.workspaces, ws], current: ws }));
       return ws;
     },
     async remove(id: string) {
-      await api.api.workspaces({ id }).delete();
+      const res = await api.api.workspaces[":id"].$delete({ param: { id } });
+      if (!res.ok) throw new Error(await parseError(res));
       update((s) => ({
         ...s,
         workspaces: s.workspaces.filter((w) => w.id !== id),

@@ -21,11 +21,16 @@ The HTTP calls succeed because the URL construction happens to match what Hono r
 ## Exported App type (as of 2026-06-02)
 `apps/api/src/index.ts` now exports `export type App = typeof app;` — this prepares for a future migration to Hono's `hc()` client.
 
-## Future migration path
-Replace Eden with Hono's official typed client:
-```ts
-import { hc } from "hono/client";
-import type { App } from "api";
-export const api = hc<App>(apiBase, { fetch: (req, opts) => fetch(req, { ...opts, credentials: "include" }) });
-```
-Note: Hono client uses `$get`, `$post`, `$patch`, `$delete` method names ($ prefix) and path params use `[":id"]` bracket syntax instead of Eden's `({ id })` call syntax.
+## Migration (completed 2026-06-02)
+Eden replaced with Hono `hc` client in `apps/web/src/lib/eden.ts`. Export name kept as `api` to minimize store changes.
+
+**Hono client syntax (vs old Eden syntax):**
+- `api.api.workspaces.$get()` was `api.api.workspaces.get()`
+- `api.api.workspaces.$post({ json: {name} })` was `.post({name})`
+- `api.api.workspaces[":id"].$delete({ param: { id } })` was `.({ id }).delete()`
+- `api.api.pages.$get({ query: { workspaceId } })` was `.get({ query: ... })`
+- Response is `Response`, not `{ data, error }` — use `if (!res.ok)` + `await res.json()`
+
+**Why:**
+- `@elysiajs/eden` is for Elysia apps; using it with Hono gave zero type safety
+- `elysia` and `@elysiajs/eden` removed from `apps/web/package.json`, `hono` added

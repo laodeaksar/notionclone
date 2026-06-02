@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import { authClient } from "$lib/auth-client.js";
   import * as v from "valibot";
   import { SignInSchema } from "@notion-clone/schemas";
@@ -22,7 +23,8 @@
       if (result.error) {
         error = result.error.message ?? "Login failed";
       } else {
-        goto("/app");
+        const redirectTo = $page.url.searchParams.get("redirectTo");
+        goto(redirectTo ?? "/app");
       }
     } catch (e) {
       if (e instanceof v.ValiError) {

@@ -6,6 +6,7 @@ export interface Page {
   title: string;
   icon: string | null;
   coverImage: string | null;
+  content: string | null;
   workspaceId: string;
   parentId: string | null;
   createdBy: string;
@@ -33,6 +34,15 @@ function buildTree(pages: Page[]): PageTree[] {
   return roots;
 }
 
+async function parseError(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { error?: string };
+    return body.error ?? `HTTP ${res.status}`;
+  } catch {
+    return `HTTP ${res.status}`;
+  }
+}
+
 function createPageStore() {
   const { subscribe, set, update } = writable<{
     pages: Page[];
@@ -53,30 +63,36 @@ function createPageStore() {
     async load(workspaceId: string) {
       update((s) => ({ ...s, loading: true, error: null }));
       try {
-        const { data, error } = await api.api.pages.get({
-          query: { workspaceId },
-        });
-        if (error) throw new Error(String(error));
-        const pages = (data as unknown as Page[]) ?? [];
+        const res = await api.api.pages.$get({ query: { workspaceId } });
+        if (!res.ok) throw new Error(await parseError(res));
+        const pages = (await res.json()) as Page[];
         update((s) => ({ ...s, pages, tree: buildTree(pages), loading: false }));
       } catch (e) {
         update((s) => ({ ...s, error: String(e), loading: false }));
       }
     },
     async create(input: { title: string; workspaceId: string; parentId?: string }) {
-      const { data, error } = await api.api.pages.post(input);
-      if (error) throw new Error(String(error));
-      const page = data as unknown as Page;
+      const res = await api.api.pages.$post({ json: input });
+      if (!res.ok) throw new Error(await parseError(res));
+      const page = (await res.json()) as Page;
       update((s) => {
         const pages = [...s.pages, page];
         return { ...s, pages, tree: buildTree(pages), current: page };
       });
       return page;
     },
-    async updatePage(id: string, input: { title?: string; icon?: string; coverImage?: string }) {
-      const { data, error } = await api.api.pages({ id }).patch(input);
-      if (error) throw new Error(String(error));
-      const updated = data as unknown as Page;
+    async updatePage(
+      id: string,
+      input: {
+        title?: string;
+        icon?: string | null;
+        coverImage?: string | null;
+        content?: string | null;
+      }
+    ) {
+      const res = await api.api.pages[":id"].$patch({ param: { id }, json: input });
+      if (!res.ok) throw new Error(await parseError(res));
+      const updated = (await res.json()) as Page;
       update((s) => {
         const pages = s.pages.map((p) => (p.id === id ? updated : p));
         return {
@@ -89,7 +105,8 @@ function createPageStore() {
       return updated;
     },
     async removePage(id: string) {
-      await api.api.pages({ id }).delete();
+      const res = await api.api.pages[":id"].$delete({ param: { id } });
+      if (!res.ok) throw new Error(await parseError(res));
       update((s) => {
         const pages = s.pages.filter((p) => p.id !== id);
         return {

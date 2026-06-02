@@ -22,12 +22,12 @@
     loading = true;
     notFound = false;
     try {
-      const { data, error } = await api.api.pages({ id }).get();
-      if (error || !data) {
+      const res = await api.api.pages[":id"].$get({ param: { id } });
+      if (!res.ok) {
         notFound = true;
         return;
       }
-      currentPage = data as unknown as Page;
+      currentPage = (await res.json()) as Page;
       pageStore.setCurrent(currentPage);
     } finally {
       loading = false;
