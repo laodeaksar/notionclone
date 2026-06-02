@@ -1,9 +1,13 @@
 import { Hono } from "hono";
-import { z } from "zod";
+import * as v from "valibot";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getDb, workspaceMember, user } from "@notion-clone/db";
 import type { DB } from "@notion-clone/db";
+import {
+  WorkspaceMemberInviteSchema,
+  WorkspaceMemberUpdateSchema,
+} from "@notion-clone/schemas";
 import { authMiddleware } from "../middleware/auth.js";
 import { NotFoundError, ForbiddenError, BadRequestError } from "../errors.js";
 import type { Env, Variables } from "../types.js";
@@ -19,15 +23,6 @@ async function ensureOwner(db: DB, workspaceId: string, userId: string) {
   if (member.role !== "owner") throw new ForbiddenError();
   return member;
 }
-
-const AddMemberSchema = z.object({
-  userId: z.string(),
-  role: z.enum(["owner", "member"]).optional(),
-});
-
-const UpdateMemberRoleSchema = z.object({
-  role: z.enum(["owner", "member"]),
-});
 
 // Route dipasang di app.ts sebagai: app.route("/api/workspaces", workspaceMemberRoutes)
 // sehingga path di sini relative: /:id/members, /:id/members/:memberId, dst.
@@ -70,7 +65,8 @@ export const workspaceMemberRoutes = new Hono<{
     const workspaceId = c.req.param("id");
     await ensureOwner(db, workspaceId, session.user.id);
 
-    const { userId, role = "member" } = AddMemberSchema.parse(
+    const { userId, role = "member" } = v.parse(
+      WorkspaceMemberInviteSchema,
       await c.req.json()
     );
 
@@ -104,7 +100,7 @@ export const workspaceMemberRoutes = new Hono<{
     const memberId = c.req.param("memberId");
     await ensureOwner(db, workspaceId, session.user.id);
 
-    const { role } = UpdateMemberRoleSchema.parse(await c.req.json());
+    const { role } = v.parse(WorkspaceMemberUpdateSchema, await c.req.json());
 
     const target = await db.query.workspaceMember.findFirst({
       where: and(

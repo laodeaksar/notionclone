@@ -1,9 +1,15 @@
 import { Hono } from "hono";
-import { z } from "zod";
+import * as v from "valibot";
 import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getDb, page, pageVersion, workspaceMember } from "@notion-clone/db";
 import type { DB } from "@notion-clone/db";
+import {
+  PageCreateSchema,
+  PageUpdateSchema,
+  PageReorderSchema,
+  PageVersionSaveSchema,
+} from "@notion-clone/schemas";
 import { authMiddleware } from "../middleware/auth.js";
 import { NotFoundError, ForbiddenError, BadRequestError } from "../errors.js";
 import type { Env, Variables } from "../types.js";
@@ -18,31 +24,6 @@ async function ensureMember(db: DB, workspaceId: string, userId: string) {
   if (!member) throw new ForbiddenError();
   return member;
 }
-
-const CreatePageSchema = z.object({
-  title: z.string(),
-  workspaceId: z.string(),
-  parentId: z.string().optional(),
-  icon: z.string().optional(),
-  coverImage: z.string().optional(),
-});
-
-const UpdatePageSchema = z.object({
-  title: z.string().optional(),
-  icon: z.string().optional(),
-  coverImage: z.string().optional(),
-  parentId: z.string().nullable().optional(),
-});
-
-const ReorderSchema = z.object({
-  parentId: z.string().nullable().optional(),
-  order: z.number(),
-});
-
-const VersionSchema = z.object({
-  title: z.string(),
-  content: z.string(),
-});
 
 export const pageRoutes = new Hono<{ Bindings: Env; Variables: Variables }>()
   .use("*", authMiddleware)
@@ -71,8 +52,10 @@ export const pageRoutes = new Hono<{ Bindings: Env; Variables: Variables }>()
   .post("/", async (c) => {
     const db = getDb(c.env.DB);
     const session = c.get("session");
-    const { title, workspaceId, parentId, icon, coverImage } =
-      CreatePageSchema.parse(await c.req.json());
+    const { title, workspaceId, parentId, icon, coverImage } = v.parse(
+      PageCreateSchema,
+      await c.req.json()
+    );
 
     await ensureMember(db, workspaceId, session.user.id);
 
@@ -108,7 +91,7 @@ export const pageRoutes = new Hono<{ Bindings: Env; Variables: Variables }>()
   .patch("/:id", async (c) => {
     const db = getDb(c.env.DB);
     const session = c.get("session");
-    const data = UpdatePageSchema.parse(await c.req.json());
+    const data = v.parse(PageUpdateSchema, await c.req.json());
 
     const existing = await db.query.page.findFirst({
       where: eq(page.id, c.req.param("id")),
@@ -146,7 +129,7 @@ export const pageRoutes = new Hono<{ Bindings: Env; Variables: Variables }>()
   .patch("/:id/reorder", async (c) => {
     const db = getDb(c.env.DB);
     const session = c.get("session");
-    const { parentId, order } = ReorderSchema.parse(await c.req.json());
+    const { parentId, order } = v.parse(PageReorderSchema, await c.req.json());
 
     const existing = await db.query.page.findFirst({
       where: eq(page.id, c.req.param("id")),
@@ -202,7 +185,7 @@ export const pageRoutes = new Hono<{ Bindings: Env; Variables: Variables }>()
   .post("/:id/versions", async (c) => {
     const db = getDb(c.env.DB);
     const session = c.get("session");
-    const { title, content } = VersionSchema.parse(await c.req.json());
+    const { title, content } = v.parse(PageVersionSaveSchema, await c.req.json());
 
     const existing = await db.query.page.findFirst({
       where: eq(page.id, c.req.param("id")),

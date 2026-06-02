@@ -1,8 +1,9 @@
 import { Hono } from "hono";
-import { z } from "zod";
+import * as v from "valibot";
 import { Liveblocks } from "@liveblocks/node";
 import { eq, and } from "drizzle-orm";
 import { getDb, page, workspaceMember } from "@notion-clone/db";
+import { LiveblocksAuthSchema } from "@notion-clone/schemas";
 import { authMiddleware } from "../middleware/auth.js";
 import { NotFoundError, ForbiddenError } from "../errors.js";
 import type { Env, Variables } from "../types.js";
@@ -13,8 +14,6 @@ function getLiveblocks(secret: string) {
   }
   return new Liveblocks({ secret });
 }
-
-const LiveblocksAuthSchema = z.object({ room: z.string() });
 
 // Route dipasang di app.ts sebagai: app.route("/api", liveblocksRoutes)
 export const liveblocksRoutes = new Hono<{
@@ -27,7 +26,7 @@ export const liveblocksRoutes = new Hono<{
   .post("/liveblocks-auth", async (c) => {
     const db = getDb(c.env.DB);
     const session = c.get("session");
-    const { room } = LiveblocksAuthSchema.parse(await c.req.json());
+    const { room } = v.parse(LiveblocksAuthSchema, await c.req.json());
 
     const p = await db.query.page.findFirst({
       where: eq(page.id, room),
