@@ -19,9 +19,9 @@ NODE_ENV = "production"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "notionclone"
+database_name = "laodeaksar"
 # Fill after: wrangler d1 create notionclone
-database_id = "akan_diisi_setelah_wrangler_d1_create"
+database_id = "17ee8a59-1a24-46b0-abe1-a17d6047d715"
 migrations_dir = "drizzle"
 
 # Compatibility fix: @better-auth/kysely-adapter needs DEFAULT_MIGRATION_* shim
