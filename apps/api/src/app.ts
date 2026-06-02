@@ -34,23 +34,14 @@ function checkRateLimit(ip: string): boolean {
 export const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
+// Origins are split per environment in wrangler.toml:
+//   [vars]         → production origins
+//   [env.dev.vars] → localhost dev origins
 app.use("*", async (c, next) => {
-  const envOrigins = (c.env.ALLOWED_ORIGINS ?? "")
+  const allowedOrigins = (c.env.ALLOWED_ORIGINS ?? "")
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean);
-
-  const devOrigins =
-    c.env.NODE_ENV !== "production"
-      ? [
-          "http://localhost:5000",
-          "http://0.0.0.0:5000",
-          "http://localhost:5173",
-          "http://0.0.0.0:5173",
-        ]
-      : [];
-
-  const allowedOrigins = [...envOrigins, ...devOrigins];
 
   return cors({
     origin: allowedOrigins,

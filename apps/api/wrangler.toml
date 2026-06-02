@@ -7,32 +7,39 @@ compatibility_flags = ["nodejs_compat"]
 port = 3000
 ip = "0.0.0.0"
 
-# Secrets (jangan taruh value di sini — set via `wrangler secret put NAMA`):
-#   BETTER_AUTH_SECRET
-#   CLOUDINARY_CLOUD_NAME
-#   CLOUDINARY_API_KEY
-#   CLOUDINARY_API_SECRET
-#   LIVEBLOCKS_SECRET_KEY
+# ── Production (default) ──────────────────────────────────────────────────────
+# Secrets (set via `wrangler secret put NAMA`):
+#   BETTER_AUTH_SECRET, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY,
+#   CLOUDINARY_API_SECRET, LIVEBLOCKS_SECRET_KEY
 
 [vars]
-BETTER_AUTH_URL = "https://3c448997-bdf0-4f05-beb3-9d3d44199b2b-00-xe3hsltqa4ef.sisko.replit.dev"
-ALLOWED_ORIGINS = "https://3c448997-bdf0-4f05-beb3-9d3d44199b2b-00-xe3hsltqa4ef.sisko.replit.dev"
-NODE_ENV = "development"
+BETTER_AUTH_URL = "https://notionclone-api.workers.dev"
+ALLOWED_ORIGINS = "https://notionclone-web.vercel.app,https://www.laodeaksar.eu.org"
+NODE_ENV = "production"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "laodeaksar"
-# Isi database_id setelah jalankan: wrangler d1 create notionclone
-database_id = "17ee8a59-1a24-46b0-abe1-a17d6047d715"
+database_name = "notionclone"
+# Fill after: wrangler d1 create notionclone
+database_id = "akan_diisi_setelah_wrangler_d1_create"
 migrations_dir = "drizzle"
 
-# Compatibility fix: @better-auth/kysely-adapter mengimport DEFAULT_MIGRATION_* dari
-# "kysely" main, tapi kysely 0.28+ hanya mengekspornya dari sub-path migration/migrator.
-# Shim ini re-export semua dari kysely + tambah konstanta yang hilang.
+# Compatibility fix: @better-auth/kysely-adapter needs DEFAULT_MIGRATION_* shim
 [alias]
 kysely = "./kysely-shim"
 
-# Data migration note:
-# Data dari Neon/Postgres harus di-export ke SQL lalu di-import ke D1:
-#   pg_dump --data-only --inserts $DATABASE_URL > data.sql
-#   wrangler d1 execute notionclone --file=data.sql
+# ── Development ───────────────────────────────────────────────────────────────
+
+[env.dev.vars]
+BETTER_AUTH_URL = "https://3c448997-bdf0-4f05-beb3-9d3d44199b2b-00-xe3hsltqa4ef.sisko.replit.dev"
+ALLOWED_ORIGINS = "http://localhost:5000,http://localhost:5173,http://0.0.0.0:5000,http://0.0.0.0:5173"
+NODE_ENV = "development"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "notionclone"
+database_id = "akan_diisi_setelah_wrangler_d1_create"
+migrations_dir = "drizzle"
+
+[env.dev.alias]
+kysely = "./kysely-shim"

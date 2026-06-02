@@ -56,7 +56,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "bash -c 'NODE_BIN=\"/nix/store/bl6iwirn83qj9r8wng43kfdqd5mfahj8-nodejs-22.22.0/bin\"; export PATH=\"$NODE_BIN:/home/runner/workspace/.npm-global/bin:$PATH\"; pnpm --filter api dev'"
+args = "pnpm --filter api dev"
 waitForPort = 3000
 
 [[workflows.workflow]]
