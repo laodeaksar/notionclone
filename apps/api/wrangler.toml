@@ -37,8 +37,8 @@ NODE_ENV = "development"
 
 [[env.dev.d1_databases]]
 binding = "DB"
-database_name = "notionclone"
-database_id = "akan_diisi_setelah_wrangler_d1_create"
+database_name = "laodeaksar"
+database_id = "17ee8a59-1a24-46b0-abe1-a17d6047d715"
 migrations_dir = "drizzle"
 
 [env.dev.alias]

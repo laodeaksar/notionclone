@@ -7,7 +7,7 @@
     "dev": "wrangler dev --env dev --port 3000",
     "deploy": "wrangler deploy",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "wrangler d1 migrations apply laodeaksar --local",
+    "db:migrate": "echo y | wrangler d1 migrations apply laodeaksar --local",
     "db:migrate:prod": "wrangler d1 migrations apply laodeaksar --remote",
     "db:seed": "wrangler d1 execute laodeaksar --local --file=seeds/seed.sql",
     "lint": "tsc --noEmit"

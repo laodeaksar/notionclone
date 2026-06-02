@@ -8,7 +8,9 @@ const apiBase =
     ? (import.meta.env.PUBLIC_API_URL as string)
     : "";
 
-export const api = treaty<App>(apiBase || "localhost:3000", {
+// Empty string = relative URL → Vite proxies /api → localhost:3000 in dev
+// PUBLIC_API_URL = full URL used in production (Vercel → Workers)
+export const api = treaty<App>(apiBase, {
   fetch: {
     credentials: "include",
   },
