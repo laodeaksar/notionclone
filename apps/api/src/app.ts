@@ -7,6 +7,7 @@ import { pageRoutes } from "./routes/page.js";
 import { uploadRoutes } from "./routes/upload.js";
 import { liveblocksRoutes } from "./routes/liveblocks.js";
 import { HttpError } from "./errors.js";
+import { openApiSpec } from "./openapi.js";
 import type { Env, Variables } from "./types.js";
 
 // ── In-memory rate limiter ─────────────────────────────────────────────────────
@@ -62,6 +63,36 @@ app.use("*", async (c, next) => {
   }
   await next();
 });
+
+// ── OpenAPI spec (public — must be before authenticated routes) ───────────────
+app.get("/api/openapi.json", (c) => c.json(openApiSpec));
+
+// ── Swagger UI (loaded from CDN) ──────────────────────────────────────────────
+app.get("/docs", (c) =>
+  c.html(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Notion Clone API — Docs</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    SwaggerUIBundle({
+      url: "/api/openapi.json",
+      dom_id: "#swagger-ui",
+      presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+      layout: "BaseLayout",
+      deepLinking: true,
+      defaultModelsExpandDepth: 1,
+    });
+  </script>
+</body>
+</html>`)
+);
 
 // ── Auth routes (better-auth handler) ────────────────────────────────────────
 app.all("/api/auth/*", async (c) => {
