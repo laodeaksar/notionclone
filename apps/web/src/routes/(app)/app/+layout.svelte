@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import { useSession } from "$lib/auth-client.js";
   import { userStore, type User } from "$lib/stores/user.js";
   import Sidebar from "$lib/components/Sidebar.svelte";
@@ -21,7 +22,8 @@
     // Only redirect when we definitively know there is no session
     // (not pending, no error, no user)
     if (!$session.isPending && !$session.error && !$session.data?.user) {
-      goto("/login");
+      const redirectTo = $page.url.pathname + $page.url.search;
+      goto(`/login?redirectTo=${encodeURIComponent(redirectTo)}`);
     }
   });
 

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import { authClient } from "$lib/auth-client.js";
   import { SignUpSchema, type SignUpInput } from "@notion-clone/schemas";
   import { createForm, Form, Field } from "@formisch/svelte";
@@ -18,7 +19,8 @@
     if (result.error) {
       serverError = result.error.message ?? "Sign up failed";
     } else {
-      goto("/app");
+      const redirectTo = $page.url.searchParams.get("redirectTo");
+      goto(redirectTo ?? "/app");
     }
   }
 </script>
