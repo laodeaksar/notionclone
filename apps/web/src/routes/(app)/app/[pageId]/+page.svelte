@@ -3,9 +3,10 @@
   import { page as pageParam } from "$app/stores";
   import { userStore } from "$lib/stores/user.js";
   import { createQuery, createMutation, useQueryClient } from "@tanstack/svelte-query";
-  import { pageQueryOptions, pageKey, pagesKey, updatePageFn, deletePageFn } from "$lib/queries.js";
+  import { pageQueryOptions, pageKey, pagesKey, pagesQueryOptions, updatePageFn, deletePageFn } from "$lib/queries.js";
   import { currentWorkspaceId } from "$lib/stores/workspace.js";
   import PageEditor from "$lib/components/PageEditor.svelte";
+  import PageBreadcrumb from "$lib/components/PageBreadcrumb.svelte";
 
   const qc = useQueryClient();
 
@@ -18,13 +19,16 @@
   const loading = $derived(pageQuery.isPending);
   const notFound = $derived(pageQuery.isError);
 
+  // ── All pages (for breadcrumb ancestry) — uses cached data from Sidebar ──
+  const pagesQuery = createQuery(() =>
+    pagesQueryOptions($currentWorkspaceId ?? "")
+  );
+
   // ── Update title mutation ─────────────────────────────────────────────────
   const updateTitle = createMutation(() => ({
     mutationFn: updatePageFn,
     onSuccess: (updated) => {
-      // Update page cache
       qc.setQueryData(pageKey(updated.id), updated);
-      // Refresh sidebar pages list
       if ($currentWorkspaceId) {
         qc.invalidateQueries({ queryKey: pagesKey($currentWorkspaceId) });
       }
@@ -37,7 +41,6 @@
   }
 
   function handleRestore() {
-    // Re-fetch page after a version restore
     qc.invalidateQueries({ queryKey: pageKey(pageId) });
   }
 
@@ -74,5 +77,6 @@
     Page not found
   </div>
 {:else if user}
+  <PageBreadcrumb page={currentPage} pages={pagesQuery.data ?? []} />
   <PageEditor page={currentPage} onTitleChange={handleTitleChange} onRestore={handleRestore} />
 {/if}
