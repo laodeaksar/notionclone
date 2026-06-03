@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, untrack } from "svelte";
   import { createMutation, createQuery } from "@tanstack/svelte-query";
   import { uploadImage, slashMenuStore } from "$lib/editor.js";
   import {
@@ -42,9 +42,14 @@
   let imageSelected = $state(false);
   let imageBubble = $state<{ left: number; top: number } | null>(null);
 
-  let titleValue = $state(page.title ?? "");
+  let titleValue = $state("");
   let titleTimer: ReturnType<typeof setTimeout>;
   let saveTimer: ReturnType<typeof setTimeout>;
+
+  $effect(() => {
+    page.id;
+    untrack(() => { titleValue = page.title ?? ""; });
+  });
 
   let historyOpen = $state(false);
   let commentPanelOpen = $state(false);

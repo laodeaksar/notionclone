@@ -107,7 +107,10 @@
 
 <div
   bind:this={editorWrapperEl}
+  role="region"
+  aria-label="Document editor"
   onmouseover={handleMouseOver}
+  onfocus={handleMouseOver}
   onmouseleave={handleMouseLeave}
 >
   {#if dragVisible}

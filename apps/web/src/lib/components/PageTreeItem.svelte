@@ -3,6 +3,7 @@
   import { page } from "$app/stores";
   import { pageStore } from "$lib/stores/page.js";
   import type { PageTree } from "$lib/stores/page.js";
+  import PageTreeItem from "./PageTreeItem.svelte";
 
   let {
     node,
@@ -70,7 +71,7 @@
 
   {#if expanded && node.children.length > 0}
     {#each node.children as child (child.id)}
-      <svelte:self node={child} depth={depth + 1} {onCreateChild} />
+      <PageTreeItem node={child} depth={depth + 1} {onCreateChild} />
     {/each}
   {/if}
 </div>
