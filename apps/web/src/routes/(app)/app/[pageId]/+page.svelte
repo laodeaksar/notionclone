@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import { page as pageParam } from "$app/stores";
   import { userStore } from "$lib/stores/user.js";
   import { createQuery, createMutation, useQueryClient } from "@tanstack/svelte-query";
-  import { pageQueryOptions, pageKey, pagesKey, updatePageFn } from "$lib/queries.js";
+  import { pageQueryOptions, pageKey, pagesKey, updatePageFn, deletePageFn } from "$lib/queries.js";
   import { currentWorkspaceId } from "$lib/stores/workspace.js";
   import PageEditor from "$lib/components/PageEditor.svelte";
 
@@ -39,7 +40,30 @@
     // Re-fetch page after a version restore
     qc.invalidateQueries({ queryKey: pageKey(pageId) });
   }
+
+  // ── Delete page mutation ──────────────────────────────────────────────────
+  const deletePage = createMutation(() => ({
+    mutationFn: deletePageFn,
+    onSuccess: async () => {
+      if (currentPage && $currentWorkspaceId) {
+        await qc.invalidateQueries({ queryKey: pagesKey($currentWorkspaceId) });
+      }
+      goto("/app");
+    },
+  }));
+
+  function handleDeleteShortcut(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "D") {
+      e.preventDefault();
+      if (!currentPage) return;
+      if (confirm(`Delete "${currentPage.title || "Untitled"}"? This cannot be undone.`)) {
+        deletePage.mutate(currentPage.id);
+      }
+    }
+  }
 </script>
+
+<svelte:window onkeydown={handleDeleteShortcut} />
 
 {#if loading}
   <div class="flex h-full items-center justify-center">
