@@ -184,6 +184,16 @@
     clearTimeout(titleTimer);
     clearTimeout(saveTimer);
   });
+
+  // ── Title focus shortcut (Cmd/Ctrl+Shift+R) ────────────────────────────────
+  let headerComp = $state<{ focusTitle: () => void } | null>(null);
+
+  function handleRenameShortcut(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "R") {
+      e.preventDefault();
+      headerComp?.focusTitle();
+    }
+  }
 </script>
 
 <svelte:window
@@ -193,10 +203,11 @@
       slashMenuStore.update((s) => ({ ...s, open: false }));
     }
   }}
+  onkeydown={handleRenameShortcut}
 />
 
 <div class="max-w-3xl mx-auto px-8 pb-24">
-  <PageHeader {page} {titleValue} onTitleInput={handleTitleInput} />
+  <PageHeader bind:this={headerComp} {page} {titleValue} onTitleInput={handleTitleInput} />
 
   <EditorToolbar
     saveIsPending={saveContent.isPending}

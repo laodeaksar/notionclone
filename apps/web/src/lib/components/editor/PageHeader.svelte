@@ -10,6 +10,13 @@
     titleValue: string;
     onTitleInput: (val: string) => void;
   } = $props();
+
+  let inputEl = $state<HTMLInputElement | null>(null);
+
+  export function focusTitle() {
+    inputEl?.focus();
+    inputEl?.select();
+  }
 </script>
 
 {#if page.coverImage}
@@ -23,6 +30,7 @@
 {/if}
 
 <input
+  bind:this={inputEl}
   type="text"
   value={titleValue}
   oninput={(e) => onTitleInput((e.target as HTMLInputElement).value)}
