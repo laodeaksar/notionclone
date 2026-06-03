@@ -119,9 +119,9 @@
   function deleteBlock() {
     if (!editor || ctxBlockPos === null) { closeCtx(); return; }
     try {
-      const $pos = editor.state.doc.resolve(ctxBlockPos);
-      const from = $pos.start(1) - 1;
-      const to = $pos.end(1) + 1;
+      const resolvedPos = editor.state.doc.resolve(ctxBlockPos);
+      const from = resolvedPos.start(1) - 1;
+      const to = resolvedPos.end(1) + 1;
       editor.chain().focus().deleteRange({ from, to }).run();
     } catch {}
     closeCtx();
@@ -130,10 +130,10 @@
   function duplicateBlock() {
     if (!editor || ctxBlockPos === null) { closeCtx(); return; }
     try {
-      const $pos = editor.state.doc.resolve(ctxBlockPos);
-      const node = $pos.node(1);
+      const resolvedPos = editor.state.doc.resolve(ctxBlockPos);
+      const node = resolvedPos.node(1);
       if (node) {
-        const to = $pos.end(1) + 1;
+        const to = resolvedPos.end(1) + 1;
         editor.chain().focus().insertContentAt(to, node.toJSON()).run();
       }
     } catch {}

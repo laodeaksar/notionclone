@@ -30,8 +30,8 @@ kysely = "./kysely-shim"
 # ── Development ───────────────────────────────────────────────────────────────
 
 [env.dev.vars]
-BETTER_AUTH_URL = "https://b0fde7b7-9397-4038-bf88-614bf2938f69-00-zg5g2uhuyju9.sisko.replit.dev"
-ALLOWED_ORIGINS = "http://localhost:5000,http://localhost:5173,http://0.0.0.0:5000,http://0.0.0.0:5173,https://b0fde7b7-9397-4038-bf88-614bf2938f69-00-zg5g2uhuyju9.sisko.replit.dev"
+BETTER_AUTH_URL = "https://6edce030-2a65-485a-8cad-ac2b441774e0-00-7hjjztwb0b0a.sisko.replit.dev"
+ALLOWED_ORIGINS = "http://localhost:5000,http://localhost:5173,http://0.0.0.0:5000,http://0.0.0.0:5173,https://6edce030-2a65-485a-8cad-ac2b441774e0-00-7hjjztwb0b0a.sisko.replit.dev"
 NODE_ENV = "development"
 
 [[env.dev.d1_databases]]
