@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from "svelte";
   import { liveblocks } from "$lib/liveblocks.js";
   import { createEditor, uploadImage } from "$lib/editor.js";
+  import { pageStore } from "$lib/stores/page.js";
   import { LiveblocksYjsProvider } from "@liveblocks/yjs";
   import * as Y from "yjs";
   import type { Editor } from "@tiptap/core";
@@ -35,11 +36,42 @@
   let titleValue = $state(page.title);
   let titleTimeout: ReturnType<typeof setTimeout>;
 
-  // Version history state
+  // ── Version history state ─────────────────────────────────────────────────
   let historyOpen = $state(false);
   let savingVersion = $state(false);
   let versionSavedMsg = $state(false);
 
+  // ── Fallback auto-save state ──────────────────────────────────────────────
+  // "initial" | "connecting" | "connected" | "reconnecting" | "disconnected"
+  let liveblocksStatus = $state<string>("initial");
+  let autoSaveStatus = $state<"idle" | "saving" | "saved" | "error">("idle");
+  let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  let unsubStatus: (() => void) | null = null;
+
+  // ── Fallback auto-save logic ──────────────────────────────────────────────
+  function scheduleAutoSave() {
+    // When Liveblocks is live, it handles syncing — no need to hit the DB
+    if (liveblocksStatus === "connected") return;
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(doAutoSave, 2000);
+  }
+
+  async function doAutoSave() {
+    if (!editor || liveblocksStatus === "connected") return;
+    autoSaveStatus = "saving";
+    try {
+      const content = JSON.stringify(editor.getJSON());
+      await pageStore.updatePage(page.id, { content });
+      autoSaveStatus = "saved";
+      setTimeout(() => {
+        if (autoSaveStatus === "saved") autoSaveStatus = "idle";
+      }, 2500);
+    } catch {
+      autoSaveStatus = "error";
+    }
+  }
+
+  // ── Title input ──────────────────────────────────────────────────────────
   function handleTitleInput(e: Event) {
     const val = (e.target as HTMLInputElement).value;
     titleValue = val;
@@ -47,6 +79,7 @@
     titleTimeout = setTimeout(() => onTitleChange(val), 500);
   }
 
+  // ── Image upload ─────────────────────────────────────────────────────────
   async function handleImageUpload() {
     const input = document.createElement("input");
     input.type = "file";
@@ -64,17 +97,19 @@
     input.click();
   }
 
+  // ── Manual version snapshot ───────────────────────────────────────────────
   async function saveVersion() {
     if (!editor) return;
     savingVersion = true;
     try {
       const content = JSON.stringify(editor.getJSON());
-      await fetch(`/api/pages/${page.id}/versions`, {
+      const res = await fetch(`/api/pages/${page.id}/versions`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: titleValue, content }),
       });
+      if (!res.ok) throw new Error("Server error");
       versionSavedMsg = true;
       setTimeout(() => (versionSavedMsg = false), 2500);
     } catch (err) {
@@ -84,11 +119,10 @@
     }
   }
 
+  // ── Restore from version history ──────────────────────────────────────────
   function handleRestore(version: { title: string; content: string }) {
-    // Restore title
     titleValue = version.title;
     onTitleChange(version.title);
-    // Restore editor content
     if (editor) {
       try {
         const doc = JSON.parse(version.content);
@@ -99,9 +133,22 @@
     }
   }
 
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
   onMount(async () => {
     ydoc = new Y.Doc();
     const room = liveblocks.enterRoom(page.id);
+
+    // Track Liveblocks connection status for fallback save decisions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    unsubStatus = (room as any).subscribe("status", (status: string) => {
+      const wasConnected = liveblocksStatus === "connected";
+      liveblocksStatus = status;
+      // Liveblocks just dropped → immediately schedule a save
+      if (wasConnected && status !== "connected" && editor) {
+        scheduleAutoSave();
+      }
+    });
+
     provider = new LiveblocksYjsProvider(room, ydoc);
 
     editor = createEditor({
@@ -111,9 +158,19 @@
       userName,
       placeholder: "Start writing, or press / for commands…",
     });
+
+    // Auto-save on every local edit when Liveblocks is offline.
+    // Skip remote Yjs syncs (meta "y-sync$") to avoid write conflicts.
+    editor.on("update", ({ transaction }) => {
+      if ((transaction as any).getMeta("y-sync$")) return;
+      scheduleAutoSave();
+    });
   });
 
   onDestroy(() => {
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    clearTimeout(titleTimeout);
+    unsubStatus?.();
     editor?.destroy();
     provider?.destroy();
     ydoc?.destroy();
@@ -154,6 +211,7 @@
 
     <div class="flex-1"></div>
 
+    <!-- Save version feedback -->
     {#if versionSavedMsg}
       <span class="text-xs text-green-600 font-medium">✓ Version saved</span>
     {/if}
@@ -175,7 +233,35 @@
       🕐 History
     </button>
 
-    <span class="text-xs text-muted-foreground">Real-time collaboration enabled</span>
+    <!-- Connection + auto-save status indicator -->
+    {#if liveblocksStatus === "connected"}
+      <span class="text-xs text-muted-foreground flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+        Live
+      </span>
+    {:else if autoSaveStatus === "saving"}
+      <span class="text-xs text-muted-foreground flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>
+        Auto-saving…
+      </span>
+    {:else if autoSaveStatus === "saved"}
+      <span class="text-xs text-green-600 flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+        Saved locally
+      </span>
+    {:else if autoSaveStatus === "error"}
+      <span class="text-xs text-destructive flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+        Save failed
+      </span>
+    {:else}
+      <span class="text-xs text-muted-foreground flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>
+        {liveblocksStatus === "connecting" || liveblocksStatus === "initial"
+          ? "Connecting…"
+          : "Offline"}
+      </span>
+    {/if}
   </div>
 
   <!-- Editor mount point -->
