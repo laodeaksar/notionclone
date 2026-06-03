@@ -1,8 +1,15 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import { createMutation } from "@tanstack/svelte-query";
+  import { createMutation, createQuery } from "@tanstack/svelte-query";
   import { uploadImage, slashMenuStore } from "$lib/editor.js";
-  import { updatePageFn, saveVersionFn, type PageVersion } from "$lib/queries.js";
+  import {
+    updatePageFn,
+    saveVersionFn,
+    commentsQueryOptions,
+    type PageVersion,
+    type CommentThread,
+  } from "$lib/queries.js";
+  import { useSession } from "$lib/auth-client.js";
   import type { Editor } from "@tiptap/core";
   import type { Page } from "$lib/stores/page.js";
 
@@ -13,6 +20,8 @@
   import BlockContextMenu from "./editor/BlockContextMenu.svelte";
   import SlashMenu from "./editor/SlashMenu.svelte";
   import VersionHistory from "./VersionHistory.svelte";
+  import CommentBubble from "./editor/CommentBubble.svelte";
+  import CommentPanel from "./editor/CommentPanel.svelte";
 
   let {
     page,
@@ -24,6 +33,10 @@
     onRestore?: () => void;
   } = $props();
 
+  // ── Auth ───────────────────────────────────────────────────────────────────
+  const session = useSession();
+  let currentUserId = $derived((session as any).data?.user?.id ?? "");
+
   // ── State ──────────────────────────────────────────────────────────────────
   let editor = $state<Editor | null>(null);
   let imageSelected = $state(false);
@@ -34,6 +47,8 @@
   let saveTimer: ReturnType<typeof setTimeout>;
 
   let historyOpen = $state(false);
+  let commentPanelOpen = $state(false);
+  let activeCommentId = $state<string | null>(null);
 
   let ctxOpen = $state(false);
   let ctxX = $state(0);
@@ -41,6 +56,14 @@
   let ctxBlockPos = $state<number | null>(null);
 
   let slash = $derived($slashMenuStore);
+
+  // ── Comments count for badge ───────────────────────────────────────────────
+  const commentsQuery = createQuery(() =>
+    commentsQueryOptions(page.id, commentPanelOpen)
+  );
+  let openCommentCount = $derived(
+    (commentsQuery.data ?? []).filter((c) => !c.resolved).length
+  );
 
   // ── Mutations ──────────────────────────────────────────────────────────────
   const saveContent = createMutation(() => ({ mutationFn: updatePageFn }));
@@ -140,6 +163,17 @@
     closeCtx();
   }
 
+  // ── Comment handlers ──────────────────────────────────────────────────────
+  function handleCommentCreated(comment: CommentThread) {
+    activeCommentId = comment.id;
+    commentPanelOpen = true;
+  }
+
+  function handleCommentClick(commentId: string) {
+    activeCommentId = commentId;
+    commentPanelOpen = true;
+  }
+
   // ── Cleanup ────────────────────────────────────────────────────────────────
   onDestroy(() => {
     clearTimeout(titleTimer);
@@ -164,9 +198,12 @@
     saveIsError={saveContent.isError}
     versionIsPending={saveVersion.isPending}
     versionIsSuccess={saveVersion.isSuccess}
+    {commentPanelOpen}
+    commentCount={openCommentCount}
     onImageUpload={handleImageUpload}
     onSaveVersion={handleSaveVersion}
     onOpenHistory={() => (historyOpen = true)}
+    onToggleComments={() => (commentPanelOpen = !commentPanelOpen)}
   />
 
   <EditorArea
@@ -176,6 +213,7 @@
     bind:imageSelected
     bind:imageBubble
     onOpenContextMenu={openContextMenu}
+    onCommentClick={handleCommentClick}
   />
 </div>
 
@@ -200,4 +238,19 @@
   pageId={page.id}
   bind:open={historyOpen}
   onRestore={handleRestore}
+/>
+
+<CommentBubble
+  {editor}
+  pageId={page.id}
+  onCommentCreated={handleCommentCreated}
+/>
+
+<CommentPanel
+  pageId={page.id}
+  open={commentPanelOpen}
+  {editor}
+  {currentUserId}
+  focusedCommentId={activeCommentId}
+  onClose={() => (commentPanelOpen = false)}
 />

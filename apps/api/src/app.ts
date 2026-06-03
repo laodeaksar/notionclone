@@ -5,6 +5,7 @@ import { workspaceRoutes } from "./routes/workspace.js";
 import { workspaceMemberRoutes } from "./routes/workspaceMember.js";
 import { pageRoutes } from "./routes/page.js";
 import { uploadRoutes } from "./routes/upload.js";
+import { commentRoutes } from "./routes/comment.js";
 import { HttpError } from "./errors.js";
 import { openApiSpec } from "./openapi.js";
 import type { Env, Variables } from "./types.js";
@@ -105,6 +106,7 @@ app.route("/api/workspaces", workspaceRoutes);
 app.route("/api/workspaces", workspaceMemberRoutes);
 app.route("/api/pages", pageRoutes);
 app.route("/api/upload", uploadRoutes);
+app.route("/api", commentRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get("/health", (c) =>

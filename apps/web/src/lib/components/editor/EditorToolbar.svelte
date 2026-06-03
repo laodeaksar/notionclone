@@ -4,17 +4,23 @@
     saveIsError = false,
     versionIsPending = false,
     versionIsSuccess = false,
+    commentPanelOpen = false,
+    commentCount = 0,
     onImageUpload,
     onSaveVersion,
     onOpenHistory,
+    onToggleComments,
   }: {
     saveIsPending?: boolean;
     saveIsError?: boolean;
     versionIsPending?: boolean;
     versionIsSuccess?: boolean;
+    commentPanelOpen?: boolean;
+    commentCount?: number;
     onImageUpload: () => void;
     onSaveVersion: () => void;
     onOpenHistory: () => void;
+    onToggleComments: () => void;
   } = $props();
 </script>
 
@@ -63,5 +69,25 @@
     class="px-2.5 py-1.5 text-xs rounded-md hover:bg-accent hover:text-foreground transition-colors"
   >
     History
+  </button>
+
+  <button
+    onclick={onToggleComments}
+    class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors
+           {commentPanelOpen
+             ? 'bg-accent text-foreground'
+             : 'hover:bg-accent hover:text-foreground'}"
+    title="Toggle comments"
+  >
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+    Comments
+    {#if commentCount > 0}
+      <span class="bg-foreground text-background rounded-full px-1.5 py-0.5 text-[10px] leading-none font-semibold">
+        {commentCount}
+      </span>
+    {/if}
   </button>
 </div>

@@ -4,6 +4,39 @@ import type { Workspace } from "$lib/stores/workspace.js";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export interface CommentAuthor {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface CommentReply {
+  id: string;
+  pageId: string;
+  authorId: string;
+  parentId: string;
+  content: string;
+  quote: string | null;
+  resolved: boolean;
+  createdAt: string | number;
+  updatedAt: string | number;
+  author: CommentAuthor;
+}
+
+export interface CommentThread {
+  id: string;
+  pageId: string;
+  authorId: string;
+  parentId: string | null;
+  content: string;
+  quote: string | null;
+  resolved: boolean;
+  createdAt: string | number;
+  updatedAt: string | number;
+  author: CommentAuthor;
+  replies: CommentReply[];
+}
+
 export interface PageVersion {
   id: string;
   pageId: string;
@@ -23,6 +56,8 @@ export const pageKey = (pageId: string) => ["page", pageId] as const;
 export const versionsKey = (pageId: string) => ["versions", pageId] as const;
 
 // backward-compat aliases used in older Sidebar import
+export const commentsKey = (pageId: string) => ["comments", pageId] as const;
+
 export const workspacesQueryKey = workspacesKey();
 export const pagesQueryKey = pagesKey;
 
@@ -152,4 +187,77 @@ export async function restoreVersionFn(input: {
   );
   if (!res.ok) throw new Error("Restore failed");
   return res.json() as Promise<Page>;
+}
+
+// ── Comment Query / Mutations ─────────────────────────────────────────────────
+
+export function commentsQueryOptions(pageId: string, enabled: boolean) {
+  return {
+    queryKey: commentsKey(pageId),
+    queryFn: async (): Promise<CommentThread[]> => {
+      const res = await fetch(`/api/pages/${pageId}/comments`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to load comments");
+      return res.json() as Promise<CommentThread[]>;
+    },
+    enabled: enabled && pageId.length > 0,
+    staleTime: 10_000,
+  };
+}
+
+export async function createCommentFn(input: {
+  pageId: string;
+  content: string;
+  quote?: string;
+}): Promise<CommentThread> {
+  const res = await fetch(`/api/pages/${input.pageId}/comments`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: input.content, quote: input.quote }),
+  });
+  if (!res.ok) throw new Error("Failed to create comment");
+  return res.json() as Promise<CommentThread>;
+}
+
+export async function createReplyFn(input: {
+  pageId: string;
+  commentId: string;
+  content: string;
+}): Promise<CommentReply> {
+  const res = await fetch(
+    `/api/pages/${input.pageId}/comments/${input.commentId}/replies`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: input.content }),
+    }
+  );
+  if (!res.ok) throw new Error("Failed to create reply");
+  return res.json() as Promise<CommentReply>;
+}
+
+export async function updateCommentFn(input: {
+  id: string;
+  content?: string;
+  resolved?: boolean;
+}): Promise<void> {
+  const { id, ...body } = input;
+  const res = await fetch(`/api/comments/${id}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("Failed to update comment");
+}
+
+export async function deleteCommentFn(id: string): Promise<void> {
+  const res = await fetch(`/api/comments/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to delete comment");
 }

@@ -11,6 +11,7 @@
     imageSelected = $bindable(false),
     imageBubble = $bindable(null),
     onOpenContextMenu,
+    onCommentClick,
   }: {
     page: Page;
     onUpdate: (json: string) => void;
@@ -18,6 +19,7 @@
     imageSelected?: boolean;
     imageBubble?: { left: number; top: number } | null;
     onOpenContextMenu?: (data: { x: number; y: number; blockPos: number | null }) => void;
+    onCommentClick?: (commentId: string) => void;
   } = $props();
 
   let editorEl = $state<HTMLDivElement | null>(null);
@@ -133,6 +135,14 @@
 
   <div
     bind:this={editorEl}
+    onclick={(e) => {
+      const target = e.target as HTMLElement;
+      const markEl = target.closest("[data-comment-id]") as HTMLElement | null;
+      if (markEl) {
+        const commentId = markEl.getAttribute("data-comment-id");
+        if (commentId) onCommentClick?.(commentId);
+      }
+    }}
     class="prose prose-neutral dark:prose-invert max-w-none min-h-96"
   ></div>
 </div>
@@ -192,4 +202,15 @@
   :global(.ProseMirror ol) { list-style: decimal; padding-left: 1.5rem; }
   :global(.ProseMirror li)  { margin: 0.2rem 0; }
   :global(.ProseMirror p)   { margin: 0.4rem 0; line-height: 1.7; }
+
+  :global(.ProseMirror .comment-mark) {
+    background-color: rgba(253, 224, 71, 0.3);
+    border-bottom: 2px solid rgba(234, 179, 8, 0.7);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+  :global(.ProseMirror .comment-mark:hover) {
+    background-color: rgba(253, 224, 71, 0.55);
+  }
 </style>

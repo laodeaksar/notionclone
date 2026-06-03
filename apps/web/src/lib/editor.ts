@@ -1,4 +1,4 @@
-import { Editor, Extension } from "@tiptap/core";
+import { Editor, Extension, Mark, mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -90,6 +90,35 @@ export const slashMenuStore = writable<SlashMenuState>({
   selectedIndex: 0,
   coords: null,
   executeCommand: null,
+});
+
+// ── Comment Mark extension ────────────────────────────────────────────────────
+
+export const CommentMark = Mark.create({
+  name: "comment",
+
+  addAttributes() {
+    return {
+      commentId: {
+        default: null,
+        parseHTML: (el) => el.getAttribute("data-comment-id"),
+        renderHTML: (attrs) =>
+          attrs.commentId ? { "data-comment-id": attrs.commentId } : {},
+      },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: "mark[data-comment-id]" }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "mark",
+      mergeAttributes({ class: "comment-mark" }, HTMLAttributes),
+      0,
+    ];
+  },
 });
 
 // ── Custom Image extension with align attribute ────────────────────────────────
@@ -267,6 +296,7 @@ export function createEditor({
       Placeholder.configure({ placeholder }),
       Typography,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
+      CommentMark,
       SlashMenuExtension,
       FileHandler.configure({
         allowedMimeTypes: [

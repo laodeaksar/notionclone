@@ -257,6 +257,7 @@ export const pageRelations = relations(page, ({ one, many }) => ({
   children: many(page, { relationName: "pageChildren" }),
   creator: one(user, { fields: [page.createdBy], references: [user.id] }),
   versions: many(pageVersion),
+  comments: many(comment),
 }));
 
 export const pageVersionRelations = relations(pageVersion, ({ one }) => ({
@@ -265,4 +266,50 @@ export const pageVersionRelations = relations(pageVersion, ({ one }) => ({
     fields: [pageVersion.savedBy],
     references: [user.id],
   }),
+}));
+
+// ── Comment ────────────────────────────────────────────────────────────────────
+
+export const comment = sqliteTable(
+  "comment",
+  {
+    id: text("id").primaryKey(),
+    pageId: text("page_id")
+      .notNull()
+      .references(() => page.id, { onDelete: "cascade" }),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    parentId: text("parent_id").references(
+      (): AnySQLiteColumn => comment.id,
+      { onDelete: "cascade" }
+    ),
+    content: text("content").notNull(),
+    quote: text("quote"),
+    resolved: integer("resolved", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [
+    index("comment_page_idx").on(t.pageId),
+    index("comment_author_idx").on(t.authorId),
+    index("comment_parent_idx").on(t.parentId),
+  ]
+);
+
+export const commentRelations = relations(comment, ({ one, many }) => ({
+  page: one(page, { fields: [comment.pageId], references: [page.id] }),
+  author: one(user, { fields: [comment.authorId], references: [user.id] }),
+  parent: one(comment, {
+    fields: [comment.parentId],
+    references: [comment.id],
+    relationName: "commentReplies",
+  }),
+  replies: many(comment, { relationName: "commentReplies" }),
 }));
