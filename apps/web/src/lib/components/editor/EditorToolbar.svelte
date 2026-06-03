@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ImagePlus, BookmarkPlus, History, MessageSquare, Check, Loader2 } from "lucide-svelte";
+  import { ImagePlus, BookmarkPlus, History, MessageSquare, Check, Loader2, AlertCircle } from "lucide-svelte";
 
   let {
     saveIsPending = false,
@@ -29,68 +29,66 @@
 <div class="flex items-center gap-1 mb-4 pb-3 border-b border-border text-muted-foreground">
   <button
     onclick={onImageUpload}
-    class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md hover:bg-accent hover:text-foreground transition-colors"
+    class="p-1.5 rounded-md hover:bg-accent hover:text-foreground transition-colors"
     title="Upload image"
+    aria-label="Upload image"
   >
-    <ImagePlus class="w-3.5 h-3.5" />
-    Image
+    <ImagePlus class="w-4 h-4" />
   </button>
 
   <div class="flex-1"></div>
 
   {#if saveIsPending}
-    <span class="text-xs text-muted-foreground flex items-center gap-1.5">
-      <Loader2 class="w-3 h-3 animate-spin" />
-      Saving…
+    <span title="Saving…" aria-label="Saving">
+      <Loader2 class="w-3.5 h-3.5 animate-spin text-muted-foreground" />
     </span>
   {:else if saveIsError}
-    <span class="text-xs text-destructive flex items-center gap-1.5">
-      <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-      Save failed
+    <span title="Save failed" aria-label="Save failed">
+      <AlertCircle class="w-3.5 h-3.5 text-destructive" />
     </span>
   {/if}
 
   {#if versionIsSuccess}
-    <span class="text-xs text-green-600 font-medium flex items-center gap-1 px-2">
-      <Check class="w-3 h-3" />
-      Saved
+    <span title="Version saved" aria-label="Version saved">
+      <Check class="w-3.5 h-3.5 text-green-600" />
     </span>
   {/if}
 
   <button
     onclick={onSaveVersion}
     disabled={versionIsPending}
-    class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+    class="p-1.5 rounded-md hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+    title="Save version"
+    aria-label="Save version"
   >
     {#if versionIsPending}
-      <Loader2 class="w-3.5 h-3.5 animate-spin" />
-      Saving…
+      <Loader2 class="w-4 h-4 animate-spin" />
     {:else}
-      <BookmarkPlus class="w-3.5 h-3.5" />
-      Save version
+      <BookmarkPlus class="w-4 h-4" />
     {/if}
   </button>
 
   <button
     onclick={onOpenHistory}
-    class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md hover:bg-accent hover:text-foreground transition-colors"
+    class="p-1.5 rounded-md hover:bg-accent hover:text-foreground transition-colors"
+    title="Version history"
+    aria-label="Version history"
   >
-    <History class="w-3.5 h-3.5" />
-    History
+    <History class="w-4 h-4" />
   </button>
 
   <button
     onclick={onToggleComments}
-    class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors
+    class="relative p-1.5 rounded-md transition-colors
            {commentPanelOpen
              ? 'bg-accent text-foreground'
              : 'hover:bg-accent hover:text-foreground'}"
     title="Toggle comments"
+    aria-label="Toggle comments"
   >
-    <MessageSquare class="w-3.5 h-3.5" />
-    Comments
+    <MessageSquare class="w-4 h-4" />
     {#if commentCount > 0}
-      <span class="bg-foreground text-background rounded-full px-1.5 py-0.5 text-[10px] leading-none font-semibold">
+      <span class="absolute -top-1 -right-1 bg-foreground text-background rounded-full min-w-[14px] h-[14px] flex items-center justify-center text-[9px] leading-none font-semibold px-0.5">
         {commentCount}
       </span>
     {/if}
