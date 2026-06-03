@@ -54,6 +54,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@formisch/svelte':
+        specifier: ^0.8.0
+        version: 0.8.0(svelte@5.56.0)(typescript@5.9.3)(valibot@1.4.1(typescript@5.9.3))
       '@liveblocks/client':
         specifier: ^3.0.0
         version: 3.19.3(@types/json-schema@7.0.15)
@@ -66,6 +69,9 @@ importers:
       '@notion-clone/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@tanstack/svelte-query':
+        specifier: ^6.1.34
+        version: 6.1.34(svelte@5.56.0)
       '@tiptap/core':
         specifier: ^2.12.0
         version: 2.27.2(@tiptap/pm@2.27.2)
@@ -1027,6 +1033,16 @@ packages:
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
 
+  '@formisch/svelte@0.8.0':
+    resolution: {integrity: sha512-BjdpuTAAikWX/HaHMWci2MmbRH/YwtrZUneXphcUPd8eVy+d8rqrEJEWBWifZRl4PQUAYdvQ/DJZOrKQlXqwrg==}
+    peerDependencies:
+      svelte: ^5.29.0
+      typescript: '>=5'
+      valibot: ^1.4.1
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   '@img/sharp-darwin-arm64@0.33.5':
     resolution: {integrity: sha512-UT4p+iz/2H4twwAoLCqfA9UH5pI6DggwKEGuaPy7nCVQ8ZsiY5PIcrRvD1DzuY3qYL07NtIQcWnBSY/heikIFQ==}
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
@@ -1612,6 +1628,14 @@ packages:
     resolution: {integrity: sha512-t6J3OrB5Fc0ExuhohouH0fWUGMYL6PTLhW+E7zIk/pdbnJARZDCwjBznFnkh5ynRnIRSI4YjtTH0t6USjJISrw==}
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7 || ^8
+
+  '@tanstack/query-core@5.101.0':
+    resolution: {integrity: sha512-cQetA74EB+seWySv1TTKr828TnP0u39m6LykwDXIo84SNortpDkp30TMEjkqtYCNP9c40uT/iwl6MLiufEt0Ow==}
+
+  '@tanstack/svelte-query@6.1.34':
+    resolution: {integrity: sha512-b/j6OXHd285NLPTH31SqJ8+XfHKoDPV8+ZGxXjg4pSAWW2aVo/f5gbu5m32QjfdTSumib3+d1dJBv5Yupv7HKw==}
+    peerDependencies:
+      svelte: ^5.25.0
 
   '@tiptap/core@2.27.2':
     resolution: {integrity: sha512-ABL1N6eoxzDzC1bYvkMbvyexHacszsKdVPYqhl5GwHLOvpZcv9VE9QaKwDILTyz5voCA0lGcAAXZp+qnXOk5lQ==}
@@ -3405,6 +3429,13 @@ snapshots:
 
   '@floating-ui/utils@0.2.11': {}
 
+  '@formisch/svelte@0.8.0(svelte@5.56.0)(typescript@5.9.3)(valibot@1.4.1(typescript@5.9.3))':
+    dependencies:
+      svelte: 5.56.0
+      valibot: 1.4.1(typescript@5.9.3)
+    optionalDependencies:
+      typescript: 5.9.3
+
   '@img/sharp-darwin-arm64@0.33.5':
     optionalDependencies:
       '@img/sharp-libvips-darwin-arm64': 1.0.4
@@ -3883,6 +3914,13 @@ snapshots:
       '@tailwindcss/oxide': 4.3.0
       tailwindcss: 4.3.0
       vite: 8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)
+
+  '@tanstack/query-core@5.101.0': {}
+
+  '@tanstack/svelte-query@6.1.34(svelte@5.56.0)':
+    dependencies:
+      '@tanstack/query-core': 5.101.0
+      svelte: 5.56.0
 
   '@tiptap/core@2.27.2(@tiptap/pm@2.27.2)':
     dependencies:

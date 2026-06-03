@@ -20,7 +20,7 @@ export interface PageTree extends Page {
   children: PageTree[];
 }
 
-function buildTree(pages: Page[]): PageTree[] {
+export function buildTree(pages: Page[]): PageTree[] {
   const map = new Map<string, PageTree>();
   const roots: PageTree[] = [];
   for (const p of pages) map.set(p.id, { ...p, children: [] });
