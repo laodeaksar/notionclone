@@ -13,7 +13,6 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@liveblocks/node": "^3.0.0",
     "@notion-clone/auth": "workspace:*",
     "@notion-clone/db": "workspace:*",
     "@notion-clone/schemas": "workspace:*",

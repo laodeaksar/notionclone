@@ -86,10 +86,3 @@ export const UploadSignatureSchema = v.object({
 
 export type UploadSignatureInput = v.InferInput<typeof UploadSignatureSchema>;
 
-// ── Liveblocks schemas ────────────────────────────────────────────────────────
-
-export const LiveblocksAuthSchema = v.object({
-  room: v.string(),
-});
-
-export type LiveblocksAuthInput = v.InferInput<typeof LiveblocksAuthSchema>;

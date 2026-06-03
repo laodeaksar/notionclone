@@ -32,6 +32,7 @@ const UpdatePageSchema = z.object({
   icon: z.string().optional(),
   coverImage: z.string().optional(),
   parentId: z.string().nullable().optional(),
+  content: z.string().optional(),
 });
 
 const ReorderSchema = z.object({

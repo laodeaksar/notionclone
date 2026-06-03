@@ -6,6 +6,7 @@ export interface Page {
   title: string;
   icon: string | null;
   coverImage: string | null;
+  content: string | null;
   workspaceId: string;
   parentId: string | null;
   createdBy: string;

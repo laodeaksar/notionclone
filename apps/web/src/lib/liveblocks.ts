@@ -1,14 +1,3 @@
-import { createClient } from "@liveblocks/client";
-
-export const liveblocks = createClient({
-  publicApiKey: import.meta.env.PUBLIC_LIVEBLOCKS_KEY ?? "",
-  authEndpoint: async (room) => {
-    const response = await fetch("/api/liveblocks-auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ room }),
-    });
-    return response.json();
-  },
-});
+// Collaboration via Liveblocks has been removed.
+// Content is now persisted directly to the database (page.content field).
+export {};

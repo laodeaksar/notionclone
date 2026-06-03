@@ -50,5 +50,5 @@
     Page not found
   </div>
 {:else if user}
-  <PageEditor page={currentPage} userName={user.name} onTitleChange={handleTitleChange} />
+  <PageEditor page={currentPage} onTitleChange={handleTitleChange} />
 {/if}
