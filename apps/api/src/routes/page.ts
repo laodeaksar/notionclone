@@ -25,35 +25,6 @@ async function ensureMember(db: DB, workspaceId: string, userId: string) {
   return member;
 }
 
-<<<<<<< HEAD
-const CreatePageSchema = z.object({
-  title: z.string(),
-  workspaceId: z.string(),
-  parentId: z.string().optional(),
-  icon: z.string().optional(),
-  coverImage: z.string().optional(),
-});
-
-const UpdatePageSchema = z.object({
-  title: z.string().optional(),
-  icon: z.string().optional(),
-  coverImage: z.string().optional(),
-  parentId: z.string().nullable().optional(),
-  content: z.string().optional(),
-});
-
-const ReorderSchema = z.object({
-  parentId: z.string().nullable().optional(),
-  order: z.number(),
-});
-
-const VersionSchema = z.object({
-  title: z.string(),
-  content: z.string(),
-});
-
-=======
->>>>>>> 75982b92e8c79649b1a477c4d72f3f54d9a5e844
 export const pageRoutes = new Hono<{ Bindings: Env; Variables: Variables }>()
   .use("*", authMiddleware)
 

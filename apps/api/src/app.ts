@@ -5,19 +5,11 @@ import { workspaceRoutes } from "./routes/workspace.js";
 import { workspaceMemberRoutes } from "./routes/workspaceMember.js";
 import { pageRoutes } from "./routes/page.js";
 import { uploadRoutes } from "./routes/upload.js";
-<<<<<<< HEAD
-=======
-import { liveblocksRoutes } from "./routes/liveblocks.js";
-import { ValiError } from "valibot";
->>>>>>> 75982b92e8c79649b1a477c4d72f3f54d9a5e844
 import { HttpError } from "./errors.js";
 import { openApiSpec } from "./openapi.js";
 import type { Env, Variables } from "./types.js";
 
 // ── In-memory rate limiter ─────────────────────────────────────────────────────
-// Catatan: Workers tidak punya persistent memory antar request — map ini
-// hidup per isolate (di-reset saat CF recycles isolate).
-// Untuk production yang ketat, gunakan Durable Objects atau KV.
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 120;
@@ -39,9 +31,6 @@ function checkRateLimit(ip: string): boolean {
 export const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-// Origins are split per environment in wrangler.toml:
-//   [vars]         → production origins
-//   [env.dev.vars] → localhost dev origins
 app.use("*", async (c, next) => {
   const allowedOrigins = (c.env.ALLOWED_ORIGINS ?? "")
     .split(",")
@@ -126,10 +115,6 @@ app.get("/health", (c) =>
 app.onError((err, c) => {
   if (err instanceof HttpError) {
     return c.json({ error: err.message }, err.status as never);
-  }
-  if (err instanceof ValiError) {
-    const msg = err.issues[0]?.message ?? "Validation error";
-    return c.json({ error: msg }, 400);
   }
   console.error("[Internal Error]", err);
   return c.json({ error: "Internal server error" }, 500);
