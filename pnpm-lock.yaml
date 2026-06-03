@@ -102,6 +102,9 @@ importers:
       hono:
         specifier: ^4.7.11
         version: 4.12.23
+      lucide-svelte:
+        specifier: ^1.0.1
+        version: 1.0.1(svelte@5.56.0)
       svelte:
         specifier: ^5.33.2
         version: 5.56.0
@@ -2466,6 +2469,12 @@ packages:
     resolution: {integrity: sha512-RPimw/7aMdv2oqRrxKwvZXcPfwBrn/JZ2xYcY9Hus/6LaS3VOAKVWKWgNLCFSiOm1ESXinjsDlidVU7JlnCN2A==}
     engines: {node: 20 || >=22}
 
+  lucide-svelte@1.0.1:
+    resolution: {integrity: sha512-WvzZgk0pqzgda+AErLvgWxHkfg/+GgUwqKMRHvzt0IqyMdmyEDzDCk3Z+Wo/3y753oIgx8u9Q4eUbWkghFa8Jg==}
+    deprecated: Package deprecated. Please use @lucide/svelte instead.
+    peerDependencies:
+      svelte: ^3 || ^4 || ^5.0.0-next.42
+
   magic-string@0.25.9:
     resolution: {integrity: sha512-RmF0AsMzgt25qzqqLc1+MbHmhdx0ojF2Fvs4XnOqz2ZOBXzzkEwc/dJQZCYHAn7v1jbVOjAZfK8msRn4BxO4VQ==}
 
@@ -4568,6 +4577,10 @@ snapshots:
   locate-character@3.0.0: {}
 
   lru-cache@11.5.1: {}
+
+  lucide-svelte@1.0.1(svelte@5.56.0):
+    dependencies:
+      svelte: 5.56.0
 
   magic-string@0.25.9:
     dependencies:

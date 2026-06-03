@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Page } from "$lib/stores/page.js";
+  import { FileText } from "lucide-svelte";
 
   let {
     page,
@@ -25,9 +26,9 @@
   </div>
 {/if}
 
-{#if page.icon}
-  <div class="text-5xl mb-4 leading-none select-none">{page.icon}</div>
-{/if}
+<div class="mb-4">
+  <FileText class="w-12 h-12 text-muted-foreground" strokeWidth={1.5} />
+</div>
 
 <input
   bind:this={inputEl}
