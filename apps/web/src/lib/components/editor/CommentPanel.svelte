@@ -201,9 +201,7 @@
         {#each threads as thread (thread.id)}
           <div
             id="comment-{thread.id}"
-            class="p-4 cursor-pointer transition-colors"
-            class:bg-yellow-50={highlightedId === thread.id}
-            class:dark:bg-yellow-950/20={highlightedId === thread.id}
+            class="p-4 cursor-pointer transition-colors {highlightedId === thread.id ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}"
             onclick={() => handleThreadClick(thread)}
             role="button"
             tabindex="0"

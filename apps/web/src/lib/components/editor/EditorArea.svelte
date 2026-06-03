@@ -138,12 +138,23 @@
 
   <div
     bind:this={editorEl}
+    role="none"
     onclick={(e) => {
       const target = e.target as HTMLElement;
       const markEl = target.closest("[data-comment-id]") as HTMLElement | null;
       if (markEl) {
         const commentId = markEl.getAttribute("data-comment-id");
         if (commentId) onCommentClick?.(commentId);
+      }
+    }}
+    onkeydown={(e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        const target = e.target as HTMLElement;
+        const markEl = target.closest("[data-comment-id]") as HTMLElement | null;
+        if (markEl) {
+          const commentId = markEl.getAttribute("data-comment-id");
+          if (commentId) onCommentClick?.(commentId);
+        }
       }
     }}
     class="prose prose-neutral dark:prose-invert max-w-none min-h-96"
