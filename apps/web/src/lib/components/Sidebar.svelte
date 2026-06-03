@@ -3,9 +3,12 @@
   import { page } from "$app/stores";
   import { authClient } from "$lib/auth-client.js";
   import { workspaceStore } from "$lib/stores/workspace.js";
-  import { pageStore } from "$lib/stores/page.js";
   import { userStore } from "$lib/stores/user.js";
   import { themeStore } from "$lib/stores/theme.js";
+  import { buildTree, type Page } from "$lib/stores/page.js";
+  import { api } from "$lib/eden.js";
+  import { createQuery, useQueryClient } from "@tanstack/svelte-query";
+  import { pagesQueryOptions, pagesQueryKey } from "$lib/queries.js";
   import PageTreeItem from "./PageTreeItem.svelte";
   import CreateWorkspaceModal from "./CreateWorkspaceModal.svelte";
   import type { Workspace } from "$lib/stores/workspace.js";
@@ -13,25 +16,17 @@
   let theme = $derived($themeStore);
 
   let ws = $derived($workspaceStore);
-  let pages = $derived($pageStore);
   let user = $derived($userStore);
   let showCreateWs = $state(false);
   let collapsed = $state(false);
 
-  // Guard: only reload pages when workspace actually changes, not on every render
-  let loadedWorkspaceId = $state<string | null>(null);
+  const qc = useQueryClient();
+  const currentWsId = $derived(ws.current?.id ?? "");
 
-  $effect(() => {
-    const currentId = ws.current?.id ?? null;
-    if (currentId && currentId !== loadedWorkspaceId) {
-      loadedWorkspaceId = currentId;
-      pageStore.load(currentId);
-    }
-    if (!currentId) {
-      loadedWorkspaceId = null;
-      pageStore.reset();
-    }
-  });
+  const pagesQuery = createQuery(() => pagesQueryOptions(currentWsId));
+
+  const pagesTree = $derived(buildTree(pagesQuery.data ?? []));
+  const pagesLoading = $derived(pagesQuery.isPending && currentWsId.length > 0);
 
   async function selectWorkspace(workspace: Workspace) {
     workspaceStore.setCurrent(workspace);
@@ -39,11 +34,12 @@
 
   async function createPage(parentId?: string) {
     if (!ws.current) return;
-    const p = await pageStore.create({
-      title: "Untitled",
-      workspaceId: ws.current.id,
-      parentId,
+    const res = await api.api.pages.$post({
+      json: { title: "Untitled", workspaceId: ws.current.id, parentId },
     });
+    if (!res.ok) return;
+    const p = (await res.json()) as Page;
+    await qc.invalidateQueries({ queryKey: pagesQueryKey(ws.current.id) });
     goto(`/app/${p.id}`);
   }
 
@@ -106,12 +102,12 @@
           >+</button>
         </div>
 
-        {#if pages.loading}
+        {#if pagesLoading}
           <p class="text-xs text-muted-foreground px-1">Loading…</p>
-        {:else if pages.tree.length === 0}
+        {:else if pagesTree.length === 0}
           <p class="text-xs text-muted-foreground px-1">No pages yet</p>
         {:else}
-          {#each pages.tree as node (node.id)}
+          {#each pagesTree as node (node.id)}
             <PageTreeItem {node} depth={0} onCreateChild={createPage} />
           {/each}
         {/if}

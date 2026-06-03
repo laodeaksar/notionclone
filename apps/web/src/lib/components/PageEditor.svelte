@@ -1,9 +1,30 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+<<<<<<< HEAD
   import { createEditor, uploadImage, slashMenuStore } from "$lib/editor.js";
   import type { Editor } from "@tiptap/core";
   import VersionHistory from "./VersionHistory.svelte";
   import type { Page } from "$lib/stores/page.js";
+=======
+  import { liveblocks } from "$lib/liveblocks.js";
+  import { createEditor, uploadImage } from "$lib/editor.js";
+  import { pageStore } from "$lib/stores/page.js";
+  import { LiveblocksYjsProvider } from "@liveblocks/yjs";
+  import * as Y from "yjs";
+  import type { Editor } from "@tiptap/core";
+  import VersionHistory from "./VersionHistory.svelte";
+
+  interface Page {
+    id: string;
+    title: string;
+    icon: string | null;
+    coverImage: string | null;
+    content: string | null;
+    workspaceId: string;
+    parentId: string | null;
+    createdBy: string;
+  }
+>>>>>>> 75982b92e8c79649b1a477c4d72f3f54d9a5e844
 
   let {
     page,
@@ -17,6 +38,7 @@
   let editorEl = $state<HTMLDivElement | null>(null);
   let editorWrapperEl = $state<HTMLDivElement | null>(null);
 
+<<<<<<< HEAD
   // Editor instance
   let editor = $state<Editor | null>(null);
 
@@ -26,10 +48,14 @@
   let saveTimer: ReturnType<typeof setTimeout>;
 
   // Version history
+=======
+  // ── Version history state ─────────────────────────────────────────────────
+>>>>>>> 75982b92e8c79649b1a477c4d72f3f54d9a5e844
   let historyOpen = $state(false);
   let savingVersion = $state(false);
   let versionSavedMsg = $state(false);
 
+<<<<<<< HEAD
   // ── Image bubble menu (shown when image node is selected) ─────────────────
   let imageSelected = $state(false);
   let imageBubble = $state<{ left: number; top: number } | null>(null);
@@ -50,6 +76,39 @@
   // ─────────────────────────────────────────────────────────────────────────
   // Title
   // ─────────────────────────────────────────────────────────────────────────
+=======
+  // ── Fallback auto-save state ──────────────────────────────────────────────
+  // "initial" | "connecting" | "connected" | "reconnecting" | "disconnected"
+  let liveblocksStatus = $state<string>("initial");
+  let autoSaveStatus = $state<"idle" | "saving" | "saved" | "error">("idle");
+  let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  let unsubStatus: (() => void) | null = null;
+
+  // ── Fallback auto-save logic ──────────────────────────────────────────────
+  function scheduleAutoSave() {
+    // When Liveblocks is live, it handles syncing — no need to hit the DB
+    if (liveblocksStatus === "connected") return;
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(doAutoSave, 2000);
+  }
+
+  async function doAutoSave() {
+    if (!editor || liveblocksStatus === "connected") return;
+    autoSaveStatus = "saving";
+    try {
+      const content = JSON.stringify(editor.getJSON());
+      await pageStore.updatePage(page.id, { content });
+      autoSaveStatus = "saved";
+      setTimeout(() => {
+        if (autoSaveStatus === "saved") autoSaveStatus = "idle";
+      }, 2500);
+    } catch {
+      autoSaveStatus = "error";
+    }
+  }
+
+  // ── Title input ──────────────────────────────────────────────────────────
+>>>>>>> 75982b92e8c79649b1a477c4d72f3f54d9a5e844
   function handleTitleInput(e: Event) {
     const val = (e.target as HTMLInputElement).value;
     titleValue = val;
@@ -57,6 +116,7 @@
     titleTimer = setTimeout(() => onTitleChange?.(val), 400);
   }
 
+<<<<<<< HEAD
   // ─────────────────────────────────────────────────────────────────────────
   // Content auto-save (debounced 1 s)
   // ─────────────────────────────────────────────────────────────────────────
@@ -77,6 +137,10 @@
   // Image upload button
   // ─────────────────────────────────────────────────────────────────────────
   function handleImageUpload() {
+=======
+  // ── Image upload ─────────────────────────────────────────────────────────
+  async function handleImageUpload() {
+>>>>>>> 75982b92e8c79649b1a477c4d72f3f54d9a5e844
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/png,image/jpeg,image/gif,image/webp";
@@ -93,6 +157,7 @@
     input.click();
   }
 
+<<<<<<< HEAD
   // ─────────────────────────────────────────────────────────────────────────
   // Image align button (bubble menu actions)
   // ─────────────────────────────────────────────────────────────────────────
@@ -129,11 +194,19 @@
   // ─────────────────────────────────────────────────────────────────────────
   // Version management
   // ─────────────────────────────────────────────────────────────────────────
+=======
+  // ── Manual version snapshot ───────────────────────────────────────────────
+>>>>>>> 75982b92e8c79649b1a477c4d72f3f54d9a5e844
   async function saveVersion() {
     if (!editor) return;
     savingVersion = true;
     try {
+<<<<<<< HEAD
       await fetch(`/api/pages/${page.id}/versions`, {
+=======
+      const content = JSON.stringify(editor.getJSON());
+      const res = await fetch(`/api/pages/${page.id}/versions`, {
+>>>>>>> 75982b92e8c79649b1a477c4d72f3f54d9a5e844
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -142,6 +215,7 @@
           content: JSON.stringify(editor.getJSON()),
         }),
       });
+      if (!res.ok) throw new Error("Server error");
       versionSavedMsg = true;
       setTimeout(() => (versionSavedMsg = false), 2500);
     } catch (err) {
@@ -151,8 +225,10 @@
     }
   }
 
+  // ── Restore from version history ──────────────────────────────────────────
   function handleRestore(version: { title: string; content: string }) {
     titleValue = version.title;
+<<<<<<< HEAD
     onTitleChange?.(version.title);
     if (editor && version.content) {
       try { editor.commands.setContent(JSON.parse(version.content)); } catch {}
@@ -174,14 +250,43 @@
         dragStyle = `position:fixed;left:${r.left - 30}px;top:${r.top + r.height / 2 - 12}px;z-index:30;`;
         dragVisible = true;
         return;
+=======
+    onTitleChange(version.title);
+    if (editor) {
+      try {
+        const doc = JSON.parse(version.content);
+        editor.commands.setContent(doc);
+      } catch {
+        // ignore malformed content
+>>>>>>> 75982b92e8c79649b1a477c4d72f3f54d9a5e844
       }
     }
   }
 
+<<<<<<< HEAD
   function handleEditorMouseLeave(e: MouseEvent) {
     const rel = e.relatedTarget as Element | null;
     if (!rel || !editorWrapperEl?.contains(rel)) dragVisible = false;
   }
+=======
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  onMount(async () => {
+    ydoc = new Y.Doc();
+    const room = liveblocks.enterRoom(page.id);
+
+    // Track Liveblocks connection status for fallback save decisions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    unsubStatus = (room as any).subscribe("status", (status: string) => {
+      const wasConnected = liveblocksStatus === "connected";
+      liveblocksStatus = status;
+      // Liveblocks just dropped → immediately schedule a save
+      if (wasConnected && status !== "connected" && editor) {
+        scheduleAutoSave();
+      }
+    });
+
+    provider = new LiveblocksYjsProvider(room, ydoc);
+>>>>>>> 75982b92e8c79649b1a477c4d72f3f54d9a5e844
 
   function openCtx(e: MouseEvent) {
     e.stopPropagation();
@@ -243,6 +348,7 @@
         saveTimer = setTimeout(() => saveContent(json), 1000);
       },
     });
+<<<<<<< HEAD
     editor = inst;
     inst.on("selectionUpdate", checkImageSelection);
     inst.on("transaction", checkImageSelection);
@@ -251,6 +357,21 @@
   onDestroy(() => {
     clearTimeout(titleTimer);
     clearTimeout(saveTimer);
+=======
+
+    // Auto-save on every local edit when Liveblocks is offline.
+    // Skip remote Yjs syncs (meta "y-sync$") to avoid write conflicts.
+    editor.on("update", ({ transaction }) => {
+      if ((transaction as any).getMeta("y-sync$")) return;
+      scheduleAutoSave();
+    });
+  });
+
+  onDestroy(() => {
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    clearTimeout(titleTimeout);
+    unsubStatus?.();
+>>>>>>> 75982b92e8c79649b1a477c4d72f3f54d9a5e844
     editor?.destroy();
   });
 </script>
@@ -305,6 +426,7 @@
 
     <div class="flex-1"></div>
 
+    <!-- Save version feedback -->
     {#if versionSavedMsg}
       <span class="text-xs text-green-600 font-medium px-2">✓ Saved</span>
     {/if}
@@ -323,6 +445,39 @@
     >
       History
     </button>
+<<<<<<< HEAD
+=======
+
+    <!-- Connection + auto-save status indicator -->
+    {#if liveblocksStatus === "connected"}
+      <span class="text-xs text-muted-foreground flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+        Live
+      </span>
+    {:else if autoSaveStatus === "saving"}
+      <span class="text-xs text-muted-foreground flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>
+        Auto-saving…
+      </span>
+    {:else if autoSaveStatus === "saved"}
+      <span class="text-xs text-green-600 flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+        Saved locally
+      </span>
+    {:else if autoSaveStatus === "error"}
+      <span class="text-xs text-destructive flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+        Save failed
+      </span>
+    {:else}
+      <span class="text-xs text-muted-foreground flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>
+        {liveblocksStatus === "connecting" || liveblocksStatus === "initial"
+          ? "Connecting…"
+          : "Offline"}
+      </span>
+    {/if}
+>>>>>>> 75982b92e8c79649b1a477c4d72f3f54d9a5e844
   </div>
 
   <!-- ── Editor + drag handle ───────────────────────────────────────────── -->

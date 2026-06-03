@@ -5,6 +5,11 @@ import { workspaceRoutes } from "./routes/workspace.js";
 import { workspaceMemberRoutes } from "./routes/workspaceMember.js";
 import { pageRoutes } from "./routes/page.js";
 import { uploadRoutes } from "./routes/upload.js";
+<<<<<<< HEAD
+=======
+import { liveblocksRoutes } from "./routes/liveblocks.js";
+import { ValiError } from "valibot";
+>>>>>>> 75982b92e8c79649b1a477c4d72f3f54d9a5e844
 import { HttpError } from "./errors.js";
 import { openApiSpec } from "./openapi.js";
 import type { Env, Variables } from "./types.js";
@@ -121,6 +126,10 @@ app.get("/health", (c) =>
 app.onError((err, c) => {
   if (err instanceof HttpError) {
     return c.json({ error: err.message }, err.status as never);
+  }
+  if (err instanceof ValiError) {
+    const msg = err.issues[0]?.message ?? "Validation error";
+    return c.json({ error: msg }, 400);
   }
   console.error("[Internal Error]", err);
   return c.json({ error: "Internal server error" }, 500);

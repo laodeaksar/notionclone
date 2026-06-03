@@ -7,7 +7,7 @@ const securityScheme = {
   cookieAuth: {
     type: "apiKey",
     in: "cookie",
-    name: "better-auth.session_token",
+    name: "notion-clone.session_token",
   },
 };
 
@@ -22,8 +22,8 @@ const WorkspaceSchema = {
     name: { type: "string" },
     description: { type: "string", nullable: true },
     slug: { type: "string" },
-    createdAt: { type: "number", description: "Unix ms" },
-    updatedAt: { type: "number", description: "Unix ms" },
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" },
   },
   required: ["id", "name", "slug", "createdAt", "updatedAt"],
 };
@@ -41,8 +41,8 @@ const PageSchema = {
     createdBy: { type: "string" },
     order: { type: "number" },
     isArchived: { type: "boolean" },
-    createdAt: { type: "number", description: "Unix ms" },
-    updatedAt: { type: "number", description: "Unix ms" },
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" },
   },
   required: [
     "id", "title", "workspaceId", "createdBy",
@@ -60,7 +60,7 @@ const PageVersionSchema = {
     icon: { type: "string", nullable: true },
     coverImage: { type: "string", nullable: true },
     savedBy: { type: "string" },
-    createdAt: { type: "number", description: "Unix ms" },
+    createdAt: { type: "string", format: "date-time" },
     savedByUser: {
       type: "object",
       properties: {
@@ -80,7 +80,7 @@ const WorkspaceMemberSchema = {
     workspaceId: { type: "string" },
     userId: { type: "string" },
     role: { type: "string", enum: ["owner", "member"] },
-    createdAt: { type: "number", description: "Unix ms" },
+    createdAt: { type: "string", format: "date-time" },
     user: {
       type: "object",
       properties: {
@@ -482,7 +482,6 @@ export const openApiSpec = {
         summary: "List saved versions of a page",
         security,
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
           { name: "limit", in: "query", schema: { type: "integer", default: 20 } },
           { name: "offset", in: "query", schema: { type: "integer", default: 0 } },
         ],

@@ -109,6 +109,7 @@ externalPort = 3002
 [userenv.shared]
 BETTER_AUTH_URL = "https://3c448997-bdf0-4f05-beb3-9d3d44199b2b-00-xe3hsltqa4ef.sisko.replit.dev"
 ALLOWED_ORIGINS = "https://3c448997-bdf0-4f05-beb3-9d3d44199b2b-00-xe3hsltqa4ef.sisko.replit.dev"
+BETTER_AUTH_SECRET = "5b5fadfad60fbefbc173891067ff79cd96e4fe3269ab39b8dc458d8148071c72"
 
 [userenv.development]
 NODE_ENV = "development"

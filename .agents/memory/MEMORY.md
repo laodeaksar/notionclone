@@ -5,4 +5,9 @@
 - [Tailwind v4 + Vite setup](tailwind-v4-vite.md) — use @tailwindcss/vite plugin; delete postcss.config.js entirely; use @import "tailwindcss" + @theme inline in app.css.
 - [kysely-shim-cf-workers](kysely-shim-cf-workers.md) — better-auth + wrangler bundling needs a kysely compat shim; DEFAULT_MIGRATION_* removed from kysely top-level in 0.28+.
 - [wrangler-dev-replit](wrangler-dev-replit.md) — wrangler dev needs ip="0.0.0.0" and port=3000 in wrangler.toml [dev] section for Replit workflow port detection.
+<<<<<<< HEAD
 - [Tiptap v3 editor architecture](tiptap-v3-editor.md) — Liveblocks removed; Tiptap 3.25.0 + Svelte store pattern for slash menu; key import and API gotchas.
+=======
+- [Validation consistency](validation-consistency.md) — API routes must use shared Valibot schemas from @notion-clone/schemas; zod removed from api; ValiError → 400 in global error handler.
+- [Eden-Hono client](eden-hono-client.md) — web app uses @elysiajs/eden treaty client against a Hono backend; works at runtime but type safety is broken; App type now exported from api/src/index.ts for future hc() migration.
+>>>>>>> 75982b92e8c79649b1a477c4d72f3f54d9a5e844

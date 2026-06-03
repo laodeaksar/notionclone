@@ -1,8 +1,12 @@
 import { Hono } from "hono";
-import { z } from "zod";
+import * as v from "valibot";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getDb, workspace, workspaceMember } from "@notion-clone/db";
+import {
+  WorkspaceCreateSchema,
+  WorkspaceUpdateSchema,
+} from "@notion-clone/schemas";
 import { authMiddleware } from "../middleware/auth.js";
 import { NotFoundError, ForbiddenError } from "../errors.js";
 import type { Env, Variables } from "../types.js";
@@ -17,11 +21,6 @@ function slugify(name: string): string {
     nanoid(6)
   );
 }
-
-const WorkspaceSchema = z.object({
-  name: z.string().min(1).max(100),
-  description: z.string().optional(),
-});
 
 export const workspaceRoutes = new Hono<{
   Bindings: Env;
@@ -49,27 +48,30 @@ export const workspaceRoutes = new Hono<{
   .post("/", async (c) => {
     const db = getDb(c.env.DB);
     const session = c.get("session");
-    const body = WorkspaceSchema.parse(await c.req.json());
-    const { name, description } = body;
+    const { name, description } = v.parse(
+      WorkspaceCreateSchema,
+      await c.req.json()
+    );
 
     const id = nanoid();
     const slug = slugify(name);
+    const now = new Date();
 
-    const ws = await db.transaction(async (tx) => {
-      const [newWs] = await tx
-        .insert(workspace)
-        .values({ id, name, description, slug })
-        .returning();
-      await tx.insert(workspaceMember).values({
-        id: nanoid(),
-        workspaceId: newWs.id,
-        userId: session.user.id,
-        role: "owner",
-      });
-      return newWs;
+    // Use two sequential inserts instead of a transaction with .returning()
+    // to avoid Drizzle D1 batch-transaction mid-read issues.
+    await db
+      .insert(workspace)
+      .values({ id, name, description: description ?? null, slug, createdAt: now, updatedAt: now });
+
+    await db.insert(workspaceMember).values({
+      id: nanoid(),
+      workspaceId: id,
+      userId: session.user.id,
+      role: "owner",
+      createdAt: now,
     });
 
-    return c.json(ws, 201);
+    return c.json({ id, name, description: description ?? null, slug, createdAt: now, updatedAt: now }, 201);
   })
 
   // GET /api/workspaces/:id
@@ -91,7 +93,7 @@ export const workspaceRoutes = new Hono<{
   .patch("/:id", async (c) => {
     const db = getDb(c.env.DB);
     const session = c.get("session");
-    const data = WorkspaceSchema.partial().parse(await c.req.json());
+    const data = v.parse(WorkspaceUpdateSchema, await c.req.json());
 
     const member = await db.query.workspaceMember.findFirst({
       where: and(
