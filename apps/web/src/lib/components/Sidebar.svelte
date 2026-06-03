@@ -1,46 +1,73 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { page } from "$app/stores";
   import { authClient } from "$lib/auth-client.js";
-  import { workspaceStore } from "$lib/stores/workspace.js";
   import { userStore } from "$lib/stores/user.js";
   import { themeStore } from "$lib/stores/theme.js";
-  import { buildTree, type Page } from "$lib/stores/page.js";
-  import { api } from "$lib/eden.js";
-  import { createQuery, useQueryClient } from "@tanstack/svelte-query";
-  import { pagesQueryOptions, pagesQueryKey } from "$lib/queries.js";
+  import { currentWorkspaceId, type Workspace } from "$lib/stores/workspace.js";
+  import { buildTree } from "$lib/stores/page.js";
+  import {
+    workspacesQueryOptions,
+    pagesQueryOptions,
+    pagesKey,
+    createPageFn,
+  } from "$lib/queries.js";
+  import { createQuery, createMutation, useQueryClient } from "@tanstack/svelte-query";
   import PageTreeItem from "./PageTreeItem.svelte";
   import CreateWorkspaceModal from "./CreateWorkspaceModal.svelte";
-  import type { Workspace } from "$lib/stores/workspace.js";
+
+  const qc = useQueryClient();
 
   let theme = $derived($themeStore);
-
-  let ws = $derived($workspaceStore);
   let user = $derived($userStore);
   let showCreateWs = $state(false);
   let collapsed = $state(false);
 
-  const qc = useQueryClient();
-  const currentWsId = $derived(ws.current?.id ?? "");
+  // ── Workspaces query ──────────────────────────────────────────────────────
+  const workspacesQuery = createQuery(() => workspacesQueryOptions());
+  const workspaces = $derived(workspacesQuery.data ?? []);
 
-  const pagesQuery = createQuery(() => pagesQueryOptions(currentWsId));
+  // Auto-select first workspace when loaded
+  $effect(() => {
+    if (workspaces.length > 0 && !$currentWorkspaceId) {
+      currentWorkspaceId.set(workspaces[0].id);
+    }
+  });
 
+  const currentWs = $derived(
+    workspaces.find((w) => w.id === $currentWorkspaceId) ?? null
+  );
+
+  // ── Pages query ───────────────────────────────────────────────────────────
+  const pagesQuery = createQuery(() =>
+    pagesQueryOptions($currentWorkspaceId ?? "")
+  );
   const pagesTree = $derived(buildTree(pagesQuery.data ?? []));
-  const pagesLoading = $derived(pagesQuery.isPending && currentWsId.length > 0);
+  const pagesLoading = $derived(
+    pagesQuery.isPending && ($currentWorkspaceId?.length ?? 0) > 0
+  );
 
-  async function selectWorkspace(workspace: Workspace) {
-    workspaceStore.setCurrent(workspace);
+  // ── Create page mutation ──────────────────────────────────────────────────
+  const createPage = createMutation(() => ({
+    mutationFn: createPageFn,
+    onSuccess: async (page) => {
+      if ($currentWorkspaceId) {
+        await qc.invalidateQueries({ queryKey: pagesKey($currentWorkspaceId) });
+      }
+      goto(`/app/${page.id}`);
+    },
+  }));
+
+  function handleCreatePage(parentId?: string) {
+    if (!$currentWorkspaceId) return;
+    createPage.mutate({
+      title: "Untitled",
+      workspaceId: $currentWorkspaceId,
+      parentId,
+    });
   }
 
-  async function createPage(parentId?: string) {
-    if (!ws.current) return;
-    const res = await api.api.pages.$post({
-      json: { title: "Untitled", workspaceId: ws.current.id, parentId },
-    });
-    if (!res.ok) return;
-    const p = (await res.json()) as Page;
-    await qc.invalidateQueries({ queryKey: pagesQueryKey(ws.current.id) });
-    goto(`/app/${p.id}`);
+  function selectWorkspace(workspace: Workspace) {
+    currentWorkspaceId.set(workspace.id);
   }
 
   async function logout() {
@@ -57,7 +84,7 @@
   <!-- Header -->
   <div class="flex items-center justify-between px-3 py-3 border-b border-border">
     {#if !collapsed}
-      <span class="font-semibold text-sm truncate">{ws.current?.name ?? "Select workspace"}</span>
+      <span class="font-semibold text-sm truncate">{currentWs?.name ?? "Select workspace"}</span>
     {/if}
     <button
       onclick={() => (collapsed = !collapsed)}
@@ -72,12 +99,12 @@
     <!-- Workspace switcher -->
     <div class="px-2 py-2 border-b border-border">
       <p class="text-xs text-muted-foreground font-medium px-1 mb-1">WORKSPACES</p>
-      {#each ws.workspaces as workspace (workspace.id)}
+      {#each workspaces as workspace (workspace.id)}
         <button
           onclick={() => selectWorkspace(workspace)}
           class="w-full text-left px-2 py-1.5 rounded text-sm hover:bg-accent transition-colors truncate"
-          class:bg-accent={ws.current?.id === workspace.id}
-          class:font-medium={ws.current?.id === workspace.id}
+          class:bg-accent={$currentWorkspaceId === workspace.id}
+          class:font-medium={$currentWorkspaceId === workspace.id}
         >
           {workspace.name}
         </button>
@@ -92,12 +119,13 @@
 
     <!-- Pages tree -->
     <div class="flex-1 overflow-y-auto px-2 py-2">
-      {#if ws.current}
+      {#if currentWs}
         <div class="flex items-center justify-between px-1 mb-1">
           <p class="text-xs text-muted-foreground font-medium">PAGES</p>
           <button
-            onclick={() => createPage()}
-            class="text-xs text-muted-foreground hover:text-foreground px-1"
+            onclick={() => handleCreatePage()}
+            disabled={createPage.isPending}
+            class="text-xs text-muted-foreground hover:text-foreground px-1 disabled:opacity-50"
             title="New page"
           >+</button>
         </div>
@@ -108,7 +136,7 @@
           <p class="text-xs text-muted-foreground px-1">No pages yet</p>
         {:else}
           {#each pagesTree as node (node.id)}
-            <PageTreeItem {node} depth={0} onCreateChild={createPage} />
+            <PageTreeItem {node} depth={0} onCreateChild={handleCreatePage} />
           {/each}
         {/if}
       {/if}

@@ -1,22 +1,30 @@
 <script lang="ts">
-  import { workspaceStore } from "$lib/stores/workspace.js";
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
+  import { currentWorkspaceId } from "$lib/stores/workspace.js";
+  import { workspacesKey, createWorkspaceFn } from "$lib/queries.js";
   import { WorkspaceCreateSchema, type WorkspaceCreateInput } from "@notion-clone/schemas";
   import { createForm, Form, Field } from "@formisch/svelte";
 
   let { onclose }: { onclose: () => void } = $props();
 
-  let serverError = $state("");
+  const qc = useQueryClient();
+
+  const createWorkspace = createMutation(() => ({
+    mutationFn: createWorkspaceFn,
+    onSuccess: (ws) => {
+      qc.invalidateQueries({ queryKey: workspacesKey() });
+      currentWorkspaceId.set(ws.id);
+      onclose();
+    },
+  }));
 
   const wsForm = createForm({ schema: WorkspaceCreateSchema });
 
   async function onsubmit(output: WorkspaceCreateInput) {
-    serverError = "";
-    try {
-      await workspaceStore.create(output.name, output.description);
-      onclose();
-    } catch (e) {
-      serverError = String(e);
-    }
+    await createWorkspace.mutateAsync({
+      name: output.name,
+      description: output.description,
+    });
   }
 
   function trapFocus(node: HTMLElement) {
@@ -76,12 +84,12 @@
     <h2 id="create-ws-title" class="text-lg font-semibold">Create Workspace</h2>
 
     <Form of={wsForm} {onsubmit} class="space-y-4">
-      {#if serverError}
+      {#if createWorkspace.isError}
         <div
           class="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive"
           role="alert"
         >
-          {serverError}
+          {createWorkspace.error?.message ?? "Something went wrong"}
         </div>
       {/if}
 
@@ -134,10 +142,10 @@
         </button>
         <button
           type="submit"
-          disabled={wsForm.isSubmitting}
+          disabled={createWorkspace.isPending}
           class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
-          {wsForm.isSubmitting ? "Creating…" : "Create"}
+          {createWorkspace.isPending ? "Creating…" : "Create"}
         </button>
       </div>
     </Form>

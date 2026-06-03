@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import { createMutation } from "@tanstack/svelte-query";
   import { createEditor, uploadImage, slashMenuStore } from "$lib/editor.js";
+  import { updatePageFn, saveVersionFn, type PageVersion } from "$lib/queries.js";
   import type { Editor } from "@tiptap/core";
   import VersionHistory from "./VersionHistory.svelte";
   import type { Page } from "$lib/stores/page.js";
@@ -8,9 +10,11 @@
   let {
     page,
     onTitleChange,
+    onRestore,
   }: {
     page: Page;
     onTitleChange?: (title: string) => void;
+    onRestore?: () => void;
   } = $props();
 
   // DOM refs
@@ -27,10 +31,8 @@
 
   // Version history
   let historyOpen = $state(false);
-  let savingVersion = $state(false);
-  let versionSavedMsg = $state(false);
 
-  // ── Image bubble menu (shown when image node is selected) ─────────────────
+  // ── Image bubble menu ─────────────────────────────────────────────────────
   let imageSelected = $state(false);
   let imageBubble = $state<{ left: number; top: number } | null>(null);
 
@@ -38,18 +40,25 @@
   let dragVisible = $state(false);
   let dragStyle = $state("");
   let hoveredBlockEl = $state<Element | null>(null);
-
   let ctxOpen = $state(false);
   let ctxX = $state(0);
   let ctxY = $state(0);
   let ctxBlockPos = $state<number | null>(null);
 
-  // ── Slash dropdown menu (driven by store from editor.ts) ──────────────────
+  // ── Slash dropdown menu ───────────────────────────────────────────────────
   let slash = $derived($slashMenuStore);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Title
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Content auto-save mutation ────────────────────────────────────────────
+  const saveContent = createMutation(() => ({
+    mutationFn: updatePageFn,
+  }));
+
+  // ── Version save mutation ─────────────────────────────────────────────────
+  const saveVersion = createMutation(() => ({
+    mutationFn: saveVersionFn,
+  }));
+
+  // ── Title input ───────────────────────────────────────────────────────────
   function handleTitleInput(e: Event) {
     const val = (e.target as HTMLInputElement).value;
     titleValue = val;
@@ -57,25 +66,15 @@
     titleTimer = setTimeout(() => onTitleChange?.(val), 400);
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Content auto-save (debounced 1 s)
-  // ─────────────────────────────────────────────────────────────────────────
-  async function saveContent(json: string) {
-    try {
-      await fetch(`/api/pages/${page.id}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: json }),
-      });
-    } catch (err) {
-      console.error("Auto-save failed:", err);
-    }
+  // ── Content auto-save (debounced 1 s) ─────────────────────────────────────
+  function scheduleContentSave(json: string) {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      saveContent.mutate({ id: page.id, content: json });
+    }, 1000);
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Image upload button
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Image upload ──────────────────────────────────────────────────────────
   function handleImageUpload() {
     const input = document.createElement("input");
     input.type = "file";
@@ -93,9 +92,7 @@
     input.click();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Image align button (bubble menu actions)
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Image align ───────────────────────────────────────────────────────────
   function setImageAlign(align: string) {
     editor?.chain().focus().updateAttributes("image", { align }).run();
   }
@@ -126,44 +123,29 @@
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Version management
-  // ─────────────────────────────────────────────────────────────────────────
-  async function saveVersion() {
+  // ── Version save ──────────────────────────────────────────────────────────
+  async function handleSaveVersion() {
     if (!editor) return;
-    savingVersion = true;
-    try {
-      const res = await fetch(`/api/pages/${page.id}/versions`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: titleValue,
-          content: JSON.stringify(editor.getJSON()),
-        }),
-      });
-      if (!res.ok) throw new Error("Server error");
-      versionSavedMsg = true;
-      setTimeout(() => (versionSavedMsg = false), 2500);
-    } catch (err) {
-      console.error("Version save failed:", err);
-    } finally {
-      savingVersion = false;
-    }
+    await saveVersion.mutateAsync({
+      pageId: page.id,
+      title: titleValue,
+      content: JSON.stringify(editor.getJSON()),
+    });
   }
 
-  // ── Restore from version history ──────────────────────────────────────────
-  function handleRestore(version: { title: string; content: string }) {
+  // ── Version restore ───────────────────────────────────────────────────────
+  function handleRestore(version: PageVersion) {
     titleValue = version.title;
     onTitleChange?.(version.title);
     if (editor && version.content) {
-      try { editor.commands.setContent(JSON.parse(version.content)); } catch {}
+      try {
+        editor.commands.setContent(JSON.parse(version.content));
+      } catch {}
     }
+    onRestore?.();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Drag-context-menu: hover detection + context menu actions
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Drag-context-menu ─────────────────────────────────────────────────────
   function handleEditorMouseOver(e: MouseEvent) {
     if (!editorEl) return;
     const pmEl = editorEl.querySelector(".ProseMirror");
@@ -224,26 +206,19 @@
     closeCtx();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Slash command execution
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Slash command ─────────────────────────────────────────────────────────
   function execSlash(item: typeof slash.items[number]) {
     slash.executeCommand?.(item);
     slashMenuStore.update((s) => ({ ...s, open: false }));
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Lifecycle
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
   onMount(() => {
     if (!editorEl) return;
     const inst = createEditor({
       element: editorEl,
       content: page.content,
-      onUpdate: (json) => {
-        clearTimeout(saveTimer);
-        saveTimer = setTimeout(() => saveContent(json), 1000);
-      },
+      onUpdate: (json) => scheduleContentSave(json),
     });
     editor = inst;
     inst.on("selectionUpdate", checkImageSelection);
@@ -291,11 +266,11 @@
 
   <!-- ── Toolbar ─────────────────────────────────────────────────────────── -->
   <div class="flex items-center gap-1 mb-4 pb-3 border-b border-border text-muted-foreground">
-    <!-- Image upload button -->
+    <!-- Image upload -->
     <button
       onclick={handleImageUpload}
       class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md hover:bg-accent hover:text-foreground transition-colors"
-      title="Upload image (also supports drag-drop &amp; paste into editor)"
+      title="Upload image"
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
@@ -307,17 +282,30 @@
 
     <div class="flex-1"></div>
 
-    <!-- Save version feedback -->
-    {#if versionSavedMsg}
+    <!-- Auto-save status -->
+    {#if saveContent.isPending}
+      <span class="text-xs text-muted-foreground flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>
+        Saving…
+      </span>
+    {:else if saveContent.isError}
+      <span class="text-xs text-destructive flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+        Save failed
+      </span>
+    {/if}
+
+    <!-- Version save -->
+    {#if saveVersion.isSuccess}
       <span class="text-xs text-green-600 font-medium px-2">✓ Saved</span>
     {/if}
 
     <button
-      onclick={saveVersion}
-      disabled={savingVersion}
+      onclick={handleSaveVersion}
+      disabled={saveVersion.isPending}
       class="px-2.5 py-1.5 text-xs rounded-md hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
     >
-      {savingVersion ? "Saving…" : "Save version"}
+      {saveVersion.isPending ? "Saving…" : "Save version"}
     </button>
 
     <button
@@ -334,7 +322,6 @@
     onmouseover={handleEditorMouseOver}
     onmouseleave={handleEditorMouseLeave}
   >
-    <!-- Drag context menu handle (⣿ icon, appears on block hover) -->
     {#if dragVisible}
       <button
         type="button"
@@ -358,7 +345,6 @@
       </button>
     {/if}
 
-    <!-- Tiptap mount point -->
     <div
       bind:this={editorEl}
       class="prose prose-neutral dark:prose-invert max-w-none min-h-96"
@@ -369,14 +355,11 @@
 <!-- ── Image align bubble menu ────────────────────────────────────────────── -->
 {#if imageSelected && imageBubble}
   <div
-    class="fixed z-50 flex items-center gap-0.5 rounded-lg border border-border
-           bg-popover p-1 shadow-md"
+    class="fixed z-50 flex items-center gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-md"
     style="left:{imageBubble.left}px;top:{imageBubble.top}px;"
   >
-    <!-- Align left -->
     <button onclick={() => setImageAlign("left")}
-      class="flex items-center justify-center w-8 h-7 rounded hover:bg-accent
-             text-muted-foreground hover:text-foreground transition-colors"
+      class="flex items-center justify-center w-8 h-7 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
       title="Align left">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <line x1="3" y1="6"  x2="21" y2="6"/>
@@ -384,11 +367,8 @@
         <line x1="3" y1="18" x2="18" y2="18"/>
       </svg>
     </button>
-
-    <!-- Align center -->
     <button onclick={() => setImageAlign("center")}
-      class="flex items-center justify-center w-8 h-7 rounded hover:bg-accent
-             text-muted-foreground hover:text-foreground transition-colors"
+      class="flex items-center justify-center w-8 h-7 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
       title="Align center">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <line x1="3" y1="6"  x2="21" y2="6"/>
@@ -396,11 +376,8 @@
         <line x1="4" y1="18" x2="20" y2="18"/>
       </svg>
     </button>
-
-    <!-- Align right -->
     <button onclick={() => setImageAlign("right")}
-      class="flex items-center justify-center w-8 h-7 rounded hover:bg-accent
-             text-muted-foreground hover:text-foreground transition-colors"
+      class="flex items-center justify-center w-8 h-7 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
       title="Align right">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <line x1="3" y1="6"  x2="21" y2="6"/>
@@ -408,13 +385,9 @@
         <line x1="6" y1="18" x2="21" y2="18"/>
       </svg>
     </button>
-
     <div class="w-px h-5 bg-border mx-0.5"></div>
-
-    <!-- Full width -->
     <button onclick={() => setImageAlign("full-width")}
-      class="flex items-center justify-center w-8 h-7 rounded hover:bg-accent
-             text-muted-foreground hover:text-foreground transition-colors"
+      class="flex items-center justify-center w-8 h-7 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
       title="Full width">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <polyline points="15 3 21 3 21 9"/>
@@ -434,8 +407,7 @@
   >
     <button
       onclick={duplicateBlock}
-      class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm
-             text-foreground hover:bg-accent transition-colors"
+      class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-foreground hover:bg-accent transition-colors"
     >
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="8" y="8" width="12" height="12" rx="2"/>
@@ -445,8 +417,7 @@
     </button>
     <button
       onclick={deleteBlock}
-      class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm
-             text-destructive hover:bg-destructive/10 transition-colors"
+      class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
     >
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="3 6 5 6 21 6"/>
@@ -466,11 +437,8 @@
     style="left:{slash.coords.left}px;top:{slash.coords.top}px;"
   >
     <div class="px-3 py-2 border-b border-border">
-      <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Blocks
-      </p>
+      <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Blocks</p>
     </div>
-
     <div class="max-h-64 overflow-y-auto p-1">
       {#each slash.items as item, i (item.title)}
         <button
@@ -481,8 +449,7 @@
           class:text-foreground={i !== slash.selectedIndex}
           class:hover:bg-accent={i !== slash.selectedIndex}
         >
-          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border
-                      bg-background font-mono text-xs font-bold text-muted-foreground">
+          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-background font-mono text-xs font-bold text-muted-foreground">
             {item.icon}
           </div>
           <div class="min-w-0">
@@ -492,7 +459,6 @@
         </button>
       {/each}
     </div>
-
     <div class="px-3 py-1.5 border-t border-border">
       <p class="text-[10px] text-muted-foreground">↑↓ navigate · Enter select · Esc close</p>
     </div>

@@ -2,7 +2,6 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { authClient } from "$lib/auth-client.js";
-  import { workspaceStore } from "$lib/stores/workspace.js";
   import { userStore, type User } from "$lib/stores/user.js";
   import Sidebar from "$lib/components/Sidebar.svelte";
 
@@ -17,7 +16,6 @@
     }
     userStore.set(session.data.user as User);
     ready = true;
-    await workspaceStore.load();
   });
 </script>
 

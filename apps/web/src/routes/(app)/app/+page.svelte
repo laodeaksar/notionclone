@@ -1,15 +1,19 @@
 <script lang="ts">
-  import { workspaceStore } from "$lib/stores/workspace.js";
+  import { createQuery } from "@tanstack/svelte-query";
+  import { workspacesQueryOptions } from "$lib/queries.js";
   import CreateWorkspaceModal from "$lib/components/CreateWorkspaceModal.svelte";
 
   let showCreate = $state(false);
-  let ws = $derived($workspaceStore);
+
+  const workspacesQuery = createQuery(() => workspacesQueryOptions());
+  const workspaces = $derived(workspacesQuery.data ?? []);
+  const isLoading = $derived(workspacesQuery.isPending);
 </script>
 
 <div class="flex h-full items-center justify-center">
-  {#if ws.loading}
+  {#if isLoading}
     <div class="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-  {:else if ws.workspaces.length === 0}
+  {:else if workspaces.length === 0}
     <div class="text-center space-y-4">
       <div class="text-6xl">📝</div>
       <h2 class="text-2xl font-semibold">No workspaces yet</h2>

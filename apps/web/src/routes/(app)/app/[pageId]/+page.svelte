@@ -1,43 +1,43 @@
 <script lang="ts">
   import { page as pageParam } from "$app/stores";
-  import { pageStore } from "$lib/stores/page.js";
   import { userStore } from "$lib/stores/user.js";
-  import { api } from "$lib/eden.js";
+  import { createQuery, createMutation, useQueryClient } from "@tanstack/svelte-query";
+  import { pageQueryOptions, pageKey, pagesKey, updatePageFn } from "$lib/queries.js";
+  import { currentWorkspaceId } from "$lib/stores/workspace.js";
   import PageEditor from "$lib/components/PageEditor.svelte";
-  import type { Page } from "$lib/stores/page.js";
+
+  const qc = useQueryClient();
 
   let pageId = $derived($pageParam.params.pageId);
   let user = $derived($userStore);
-  let currentPage = $state<Page | null>(null);
-  let loading = $state(true);
-  let notFound = $state(false);
 
-  $effect(() => {
-    if (pageId) {
-      loadPage(pageId);
-    }
-  });
+  // ── Page query ────────────────────────────────────────────────────────────
+  const pageQuery = createQuery(() => pageQueryOptions(pageId));
+  const currentPage = $derived(pageQuery.data ?? null);
+  const loading = $derived(pageQuery.isPending);
+  const notFound = $derived(pageQuery.isError);
 
-  async function loadPage(id: string) {
-    loading = true;
-    notFound = false;
-    try {
-      const res = await api.api.pages[":id"].$get({ param: { id } });
-      if (!res.ok) {
-        notFound = true;
-        return;
+  // ── Update title mutation ─────────────────────────────────────────────────
+  const updateTitle = createMutation(() => ({
+    mutationFn: updatePageFn,
+    onSuccess: (updated) => {
+      // Update page cache
+      qc.setQueryData(pageKey(updated.id), updated);
+      // Refresh sidebar pages list
+      if ($currentWorkspaceId) {
+        qc.invalidateQueries({ queryKey: pagesKey($currentWorkspaceId) });
       }
-      currentPage = (await res.json()) as Page;
-      pageStore.setCurrent(currentPage);
-    } finally {
-      loading = false;
-    }
+    },
+  }));
+
+  function handleTitleChange(title: string) {
+    if (!currentPage) return;
+    updateTitle.mutate({ id: currentPage.id, title });
   }
 
-  async function handleTitleChange(title: string) {
-    if (!currentPage) return;
-    currentPage = { ...currentPage, title };
-    await pageStore.updatePage(currentPage.id, { title });
+  function handleRestore() {
+    // Re-fetch page after a version restore
+    qc.invalidateQueries({ queryKey: pageKey(pageId) });
   }
 </script>
 
@@ -50,5 +50,5 @@
     Page not found
   </div>
 {:else if user}
-  <PageEditor page={currentPage} onTitleChange={handleTitleChange} />
+  <PageEditor page={currentPage} onTitleChange={handleTitleChange} onRestore={handleRestore} />
 {/if}
