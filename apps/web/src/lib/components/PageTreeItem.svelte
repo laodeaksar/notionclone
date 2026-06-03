@@ -4,6 +4,7 @@
   import type { PageTree } from "$lib/stores/page.js";
   import { deletePageFn, pagesKey } from "$lib/queries.js";
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
+  import { ChevronRight, ChevronDown, File, Plus, Trash2 } from "lucide-svelte";
   import PageTreeItem from "./PageTreeItem.svelte";
 
   let {
@@ -44,17 +45,19 @@
     <!-- expand toggle -->
     <button
       onclick={() => (expanded = !expanded)}
-      class="w-4 h-4 text-muted-foreground flex-shrink-0 text-xs"
+      class="w-4 h-4 text-muted-foreground flex-shrink-0 flex items-center justify-center"
     >
       {#if node.children.length > 0}
-        {expanded ? "▾" : "▸"}
-      {:else}
-        &nbsp;
+        {#if expanded}
+          <ChevronDown class="w-3 h-3" />
+        {:else}
+          <ChevronRight class="w-3 h-3" />
+        {/if}
       {/if}
     </button>
 
     <!-- icon -->
-    <span class="text-base leading-none">{node.icon ?? "📄"}</span>
+    <File class="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" strokeWidth={1.5} />
 
     <!-- title -->
     <button
@@ -68,14 +71,18 @@
     <div class="hidden group-hover:flex items-center gap-0.5">
       <button
         onclick={() => onCreateChild(node.id)}
-        class="w-4 h-4 text-xs text-muted-foreground hover:text-foreground"
+        class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent-foreground/10 transition-colors"
         title="Add sub-page"
-      >+</button>
+      >
+        <Plus class="w-3 h-3" />
+      </button>
       <button
         onclick={deletePage}
-        class="w-4 h-4 text-xs text-muted-foreground hover:text-destructive"
+        class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
         title="Delete"
-      >×</button>
+      >
+        <Trash2 class="w-3 h-3" />
+      </button>
     </div>
   </div>
 
