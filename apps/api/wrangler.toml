@@ -10,7 +10,7 @@ ip = "0.0.0.0"
 # ── Production (default) ──────────────────────────────────────────────────────
 # Secrets (set via `wrangler secret put NAMA`):
 #   BETTER_AUTH_SECRET, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY,
-#   CLOUDINARY_API_SECRET, LIVEBLOCKS_SECRET_KEY
+#   CLOUDINARY_API_SECRET
 
 [vars]
 BETTER_AUTH_URL = "https://notionclone-api.workers.dev"
@@ -20,7 +20,6 @@ NODE_ENV = "production"
 [[d1_databases]]
 binding = "DB"
 database_name = "laodeaksar"
-# Fill after: wrangler d1 create notionclone
 database_id = "17ee8a59-1a24-46b0-abe1-a17d6047d715"
 migrations_dir = "drizzle"
 
@@ -31,8 +30,8 @@ kysely = "./kysely-shim"
 # ── Development ───────────────────────────────────────────────────────────────
 
 [env.dev.vars]
-BETTER_AUTH_URL = "https://3df6a0d0-dd92-470e-8a61-159108eccc92-00-2zhksrm1eyhqm.pike.replit.dev"
-ALLOWED_ORIGINS = "http://localhost:5000,http://localhost:5173,http://0.0.0.0:5000,http://0.0.0.0:5173,https://3df6a0d0-dd92-470e-8a61-159108eccc92-00-2zhksrm1eyhqm.pike.replit.dev"
+BETTER_AUTH_URL = "https://b0fde7b7-9397-4038-bf88-614bf2938f69-00-zg5g2uhuyju9.sisko.replit.dev"
+ALLOWED_ORIGINS = "http://localhost:5000,http://localhost:5173,http://0.0.0.0:5000,http://0.0.0.0:5173,https://b0fde7b7-9397-4038-bf88-614bf2938f69-00-zg5g2uhuyju9.sisko.replit.dev"
 NODE_ENV = "development"
 
 [[env.dev.d1_databases]]
