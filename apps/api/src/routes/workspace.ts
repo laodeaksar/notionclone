@@ -48,26 +48,30 @@ export const workspaceRoutes = new Hono<{
   .post("/", async (c) => {
     const db = getDb(c.env.DB);
     const session = c.get("session");
-    const { name, description } = v.parse(WorkspaceCreateSchema, await c.req.json());
+    const { name, description } = v.parse(
+      WorkspaceCreateSchema,
+      await c.req.json()
+    );
 
     const id = nanoid();
     const slug = slugify(name);
+    const now = new Date();
 
-    const ws = await db.transaction(async (tx) => {
-      const [newWs] = await tx
-        .insert(workspace)
-        .values({ id, name, description, slug })
-        .returning();
-      await tx.insert(workspaceMember).values({
-        id: nanoid(),
-        workspaceId: newWs.id,
-        userId: session.user.id,
-        role: "owner",
-      });
-      return newWs;
+    // Use two sequential inserts instead of a transaction with .returning()
+    // to avoid Drizzle D1 batch-transaction mid-read issues.
+    await db
+      .insert(workspace)
+      .values({ id, name, description: description ?? null, slug, createdAt: now, updatedAt: now });
+
+    await db.insert(workspaceMember).values({
+      id: nanoid(),
+      workspaceId: id,
+      userId: session.user.id,
+      role: "owner",
+      createdAt: now,
     });
 
-    return c.json(ws, 201);
+    return c.json({ id, name, description: description ?? null, slug, createdAt: now, updatedAt: now }, 201);
   })
 
   // GET /api/workspaces/:id
