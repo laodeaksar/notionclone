@@ -8,3 +8,4 @@
 - [Tiptap v3 editor architecture](tiptap-v3-editor.md) — Liveblocks removed; Tiptap 3.25.0 + Svelte store pattern for slash menu; key import and API gotchas.
 - [Validation consistency](validation-consistency.md) — API routes must use shared Valibot schemas from @notion-clone/schemas; zod removed from api; ValiError → 400 in global error handler.
 - [TanStack Query architecture](tanstack-query-arch.md) — all queries and mutations go through TanStack Query; stores only hold UI selection state; query keys and mutation fns centralized in queries.ts.
+- [Replit proxy auth pattern](replit-proxy-auth.md) — Replit proxy strips Cookie headers on full-page navigation; never use hooks.server.ts cookie checks for auth. Use client-side useSession instead.

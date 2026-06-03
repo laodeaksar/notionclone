@@ -1,23 +1,28 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { authClient } from "$lib/auth-client.js";
+  import { useSession } from "$lib/auth-client.js";
   import { userStore, type User } from "$lib/stores/user.js";
   import Sidebar from "$lib/components/Sidebar.svelte";
   import CommandPalette from "$lib/components/CommandPalette.svelte";
 
   let { children } = $props();
-  let ready = $state(false);
   let paletteOpen = $state(false);
 
-  onMount(async () => {
-    const session = await authClient.getSession();
-    if (!session.data?.user) {
-      goto("/login");
-      return;
+  const session = useSession();
+
+  // Derive ready state: only true when session is confirmed and user exists
+  const ready = $derived(!$session.isPending && !!$session.data?.user);
+
+  $effect(() => {
+    // Sync user store whenever session resolves
+    if ($session.data?.user) {
+      userStore.set($session.data.user as User);
     }
-    userStore.set(session.data.user as User);
-    ready = true;
+    // Only redirect when we definitively know there is no session
+    // (not pending, no error, no user)
+    if (!$session.isPending && !$session.error && !$session.data?.user) {
+      goto("/login");
+    }
   });
 
   function handleGlobalKeydown(e: KeyboardEvent) {
