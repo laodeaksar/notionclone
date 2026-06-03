@@ -12,6 +12,7 @@
     createPageFn,
   } from "$lib/queries.js";
   import { createQuery, createMutation, useQueryClient } from "@tanstack/svelte-query";
+  import { PanelLeftClose, PanelLeftOpen, Plus, Sun, Moon, LogOut } from "lucide-svelte";
   import PageTreeItem from "./PageTreeItem.svelte";
   import CreateWorkspaceModal from "./CreateWorkspaceModal.svelte";
 
@@ -88,10 +89,14 @@
     {/if}
     <button
       onclick={() => (collapsed = !collapsed)}
-      class="p-1 rounded hover:bg-accent text-muted-foreground"
-      title={collapsed ? "Expand" : "Collapse"}
+      class="p-1 rounded hover:bg-accent text-muted-foreground transition-colors"
+      title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
-      {collapsed ? "→" : "←"}
+      {#if collapsed}
+        <PanelLeftOpen class="w-4 h-4" />
+      {:else}
+        <PanelLeftClose class="w-4 h-4" />
+      {/if}
     </button>
   </div>
 
@@ -111,9 +116,10 @@
       {/each}
       <button
         onclick={() => (showCreateWs = true)}
-        class="w-full text-left px-2 py-1.5 rounded text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        class="w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
       >
-        + New workspace
+        <Plus class="w-3.5 h-3.5" />
+        New workspace
       </button>
     </div>
 
@@ -125,9 +131,11 @@
           <button
             onclick={() => handleCreatePage()}
             disabled={createPage.isPending}
-            class="text-xs text-muted-foreground hover:text-foreground px-1 disabled:opacity-50"
+            class="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
             title="New page"
-          >+</button>
+          >
+            <Plus class="w-3.5 h-3.5" />
+          </button>
         </div>
 
         {#if pagesLoading}
@@ -157,21 +165,18 @@
             aria-label="Toggle theme"
           >
             {#if theme === "dark"}
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="4"/>
-                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
-              </svg>
+              <Sun class="w-4 h-4" />
             {:else}
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
-              </svg>
+              <Moon class="w-4 h-4" />
             {/if}
           </button>
           <button
             onclick={logout}
-            class="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent"
+            class="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-accent transition-colors"
+            title="Sign out"
+            aria-label="Sign out"
           >
-            Out
+            <LogOut class="w-4 h-4" />
           </button>
         </div>
       </div>
