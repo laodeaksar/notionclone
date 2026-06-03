@@ -4,9 +4,11 @@
   import { authClient } from "$lib/auth-client.js";
   import { userStore, type User } from "$lib/stores/user.js";
   import Sidebar from "$lib/components/Sidebar.svelte";
+  import CommandPalette from "$lib/components/CommandPalette.svelte";
 
   let { children } = $props();
   let ready = $state(false);
+  let paletteOpen = $state(false);
 
   onMount(async () => {
     const session = await authClient.getSession();
@@ -17,7 +19,16 @@
     userStore.set(session.data.user as User);
     ready = true;
   });
+
+  function handleGlobalKeydown(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      e.preventDefault();
+      paletteOpen = !paletteOpen;
+    }
+  }
 </script>
+
+<svelte:window onkeydown={handleGlobalKeydown} />
 
 <div class="flex h-screen overflow-hidden bg-background">
   {#if ready}
@@ -25,6 +36,7 @@
     <main class="flex-1 overflow-y-auto">
       {@render children()}
     </main>
+    <CommandPalette bind:open={paletteOpen} />
   {:else}
     <div class="flex h-full w-full items-center justify-center">
       <div class="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
