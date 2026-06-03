@@ -9,6 +9,7 @@
     deleteCommentFn,
     type CommentThread,
   } from "$lib/queries.js";
+  import { X, MessageSquare, Loader2 } from "lucide-svelte";
 
   let {
     pageId,
@@ -154,10 +155,7 @@
              hover:bg-accent text-muted-foreground transition-colors"
       aria-label="Close comments"
     >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M18 6 6 18M6 6l12 12"/>
-      </svg>
+      <X class="w-4 h-4" />
     </button>
   </div>
 
@@ -184,11 +182,7 @@
     {:else if threads.length === 0}
       <div class="p-8 text-center">
         <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-               class="text-muted-foreground">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
+          <MessageSquare class="w-4.5 h-4.5 text-muted-foreground" strokeWidth={1.5} />
         </div>
         <p class="text-xs text-muted-foreground">
           {activeTab === "open"
@@ -285,13 +279,10 @@
                     {#if reply.authorId === currentUserId}
                       <button
                         onclick={(e) => { e.stopPropagation(); deleteComment.mutate(reply.id); }}
-                        class="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                        class="shrink-0 p-0.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                         aria-label="Delete reply"
                       >
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
-                             stroke="currentColor" stroke-width="2.5">
-                          <path d="M18 6 6 18M6 6l12 12"/>
-                        </svg>
+                        <X class="w-3 h-3" />
                       </button>
                     {/if}
                   </div>
@@ -327,9 +318,13 @@
                   <button
                     onclick={() => submitReply(thread.id)}
                     disabled={!replyText.trim() || addReply.isPending}
-                    class="px-2 py-1 text-xs rounded bg-foreground text-background disabled:opacity-50"
+                    class="flex items-center gap-1 px-2 py-1 text-xs rounded bg-foreground text-background disabled:opacity-50"
                   >
-                    {addReply.isPending ? "…" : "Reply"}
+                    {#if addReply.isPending}
+                      <Loader2 class="w-3 h-3 animate-spin" />
+                    {:else}
+                      Reply
+                    {/if}
                   </button>
                 </div>
               </div>

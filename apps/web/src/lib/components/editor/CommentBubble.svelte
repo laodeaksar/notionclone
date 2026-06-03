@@ -2,6 +2,7 @@
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import type { Editor } from "@tiptap/core";
   import { commentsKey, createCommentFn, type CommentThread } from "$lib/queries.js";
+  import { MessageSquare, Loader2 } from "lucide-svelte";
 
   let {
     editor,
@@ -105,10 +106,7 @@
            select-none"
     aria-label="Add comment"
   >
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-    </svg>
+    <MessageSquare class="w-3 h-3" strokeWidth={2.5} />
     Comment
   </button>
 {/if}
@@ -161,10 +159,15 @@
         <button
           onclick={submit}
           disabled={!commentText.trim() || createComment.isPending}
-          class="px-3 py-1.5 text-xs rounded-lg bg-foreground text-background
+          class="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-foreground text-background
                  font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
         >
-          {createComment.isPending ? "Saving…" : "Comment"}
+          {#if createComment.isPending}
+            <Loader2 class="w-3 h-3 animate-spin" />
+            Saving…
+          {:else}
+            Comment
+          {/if}
         </button>
       </div>
     </div>
