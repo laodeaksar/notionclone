@@ -310,7 +310,6 @@
                   bind:value={replyText}
                   placeholder="Reply…"
                   rows={2}
-                  autofocus
                   onkeydown={(e) => {
                     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitReply(thread.id);
                     if (e.key === "Escape") { replyingTo = null; replyText = ""; }

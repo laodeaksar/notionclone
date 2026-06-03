@@ -1,8 +1,9 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-  import { pageStore } from "$lib/stores/page.js";
   import type { PageTree } from "$lib/stores/page.js";
+  import { deletePageFn, pagesKey } from "$lib/queries.js";
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import PageTreeItem from "./PageTreeItem.svelte";
 
   let {
@@ -15,13 +16,22 @@
     onCreateChild: (parentId: string) => void;
   } = $props();
 
+  const qc = useQueryClient();
+
+  const deletePageMutation = createMutation(() => ({
+    mutationFn: deletePageFn,
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: pagesKey(node.workspaceId) });
+      if (isActive) goto("/app");
+    },
+  }));
+
   let expanded = $state(true);
   let currentPath = $derived($page.url.pathname);
   let isActive = $derived(currentPath === `/app/${node.id}`);
 
-  async function deletePage() {
-    await pageStore.removePage(node.id);
-    if (isActive) goto("/app");
+  function deletePage() {
+    deletePageMutation.mutate(node.id);
   }
 </script>
 
