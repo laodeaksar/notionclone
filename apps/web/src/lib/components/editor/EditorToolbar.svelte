@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ImagePlus, BookmarkPlus, History, MessageSquare, Check, Loader2, AlertCircle } from "lucide-svelte";
+  import { ImagePlus, BookmarkPlus, History, MessageSquare, Check, Loader2, AlertCircle, CloudUpload } from "lucide-svelte";
 
   let {
     saveIsPending = false,
@@ -8,10 +8,12 @@
     versionIsSuccess = false,
     commentPanelOpen = false,
     commentCount = 0,
+    hasDraft = false,
     onImageUpload,
     onSaveVersion,
     onOpenHistory,
     onToggleComments,
+    onDiscardDraft,
   }: {
     saveIsPending?: boolean;
     saveIsError?: boolean;
@@ -19,10 +21,12 @@
     versionIsSuccess?: boolean;
     commentPanelOpen?: boolean;
     commentCount?: number;
+    hasDraft?: boolean;
     onImageUpload: () => void;
     onSaveVersion: () => void;
     onOpenHistory: () => void;
     onToggleComments: () => void;
+    onDiscardDraft?: () => void;
   } = $props();
 </script>
 
@@ -37,6 +41,23 @@
   </button>
 
   <div class="flex-1"></div>
+
+  {#if hasDraft && !saveIsPending}
+    <span class="flex items-center gap-1 text-xs text-muted-foreground" title="Perubahan tersimpan lokal, menunggu sinkronisasi">
+      <CloudUpload class="w-3.5 h-3.5" />
+      Draft tersimpan
+    </span>
+    {#if onDiscardDraft}
+      <button
+        onclick={onDiscardDraft}
+        class="text-xs text-destructive hover:underline px-1"
+        title="Buang perubahan lokal dan kembalikan ke versi server"
+      >
+        Buang
+      </button>
+    {/if}
+    <span class="w-px h-3 bg-border mx-0.5"></span>
+  {/if}
 
   {#if saveIsPending}
     <span title="Saving…" aria-label="Saving">

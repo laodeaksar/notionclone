@@ -10,6 +10,7 @@
     type CommentThread,
   } from "$lib/queries.js";
   import { useSession } from "$lib/auth-client.js";
+  import { saveDraft, loadDraft, clearDraft } from "$lib/draft.js";
   import type { Editor } from "@tiptap/core";
   import type { Page } from "$lib/stores/page.js";
 
@@ -62,6 +63,43 @@
 
   let slash = $derived($slashMenuStore);
 
+  // ── Draft state ────────────────────────────────────────────────────────────
+  // `hasDraft` = true when IDB has unsynchronised content for this page.
+  // `pendingDraft` holds content loaded from IDB waiting to be applied to editor.
+  let hasDraft = $state(false);
+  let pendingDraft = $state<string | null>(null);
+
+  // Load draft from IDB whenever page changes.
+  $effect(() => {
+    const pageId = page.id;
+    untrack(() => {
+      hasDraft = false;
+      pendingDraft = null;
+    });
+    loadDraft(pageId).then((draft) => {
+      if (draft) {
+        pendingDraft = draft.content;
+        hasDraft = true;
+      }
+    });
+  });
+
+  // Apply draft to editor as soon as both are ready.
+  // Calling setContent() also triggers onUpdate → scheduleContentSave so the
+  // draft is re-queued as a fresh mutation when back online.
+  $effect(() => {
+    const ed = editor;
+    const draft = pendingDraft;
+    if (ed && draft !== null) {
+      untrack(() => {
+        try {
+          ed.commands.setContent(JSON.parse(draft));
+        } catch {}
+        pendingDraft = null;
+      });
+    }
+  });
+
   // ── Comments count for badge ───────────────────────────────────────────────
   const commentsQuery = createQuery(() =>
     commentsQueryOptions(page.id, commentPanelOpen)
@@ -71,7 +109,14 @@
   );
 
   // ── Mutations ──────────────────────────────────────────────────────────────
-  const saveContent = createMutation(() => ({ mutationFn: updatePageFn }));
+  const saveContent = createMutation(() => ({
+    mutationFn: updatePageFn,
+    onSuccess: (_data: Page, variables: { id: string; content?: string | null }) => {
+      // Draft is now persisted on the server — remove local copy.
+      clearDraft(variables.id).catch(() => {});
+      hasDraft = false;
+    },
+  }));
   const saveVersion = createMutation(() => ({ mutationFn: saveVersionFn }));
 
   // ── Title ──────────────────────────────────────────────────────────────────
@@ -82,11 +127,32 @@
   }
 
   // ── Content auto-save (debounced 1 s) ─────────────────────────────────────
+  // Draft is written to IDB immediately (works offline); the server mutation
+  // fires after the debounce window and is paused automatically when offline.
   function scheduleContentSave(json: string) {
+    // Persist to IDB right away — survives browser close while offline.
+    saveDraft(page.id, json).catch(() => {});
+    hasDraft = true;
+
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       saveContent.mutate({ id: page.id, content: json });
     }, 1000);
+  }
+
+  // ── Discard draft ──────────────────────────────────────────────────────────
+  // Remove the local draft and restore the last content saved on the server.
+  async function discardDraft() {
+    await clearDraft(page.id).catch(() => {});
+    hasDraft = false;
+    if (editor) {
+      try {
+        const serverContent = page.content ? JSON.parse(page.content) : null;
+        editor.commands.setContent(serverContent ?? { type: "doc", content: [{ type: "paragraph" }] });
+      } catch {
+        editor.commands.setContent({ type: "doc", content: [{ type: "paragraph" }] });
+      }
+    }
   }
 
   // ── Image upload ──────────────────────────────────────────────────────────
@@ -216,10 +282,12 @@
     versionIsSuccess={saveVersion.isSuccess}
     {commentPanelOpen}
     commentCount={openCommentCount}
+    {hasDraft}
     onImageUpload={handleImageUpload}
     onSaveVersion={handleSaveVersion}
     onOpenHistory={() => (historyOpen = true)}
     onToggleComments={() => (commentPanelOpen = !commentPanelOpen)}
+    onDiscardDraft={discardDraft}
   />
 
   <EditorArea
