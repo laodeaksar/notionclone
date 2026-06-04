@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, untrack } from "svelte";
   import { createMutation, createQuery } from "@tanstack/svelte-query";
-  import { uploadImage, slashMenuStore } from "$lib/editor.js";
+  import { uploadImage, slashMenuStore, type ImageFileResult } from "$lib/editor.js";
   import {
     updatePageFn,
     saveVersionFn,
@@ -11,6 +11,7 @@
   } from "$lib/queries.js";
   import { useSession } from "$lib/auth-client.js";
   import { saveDraft, loadDraft, clearDraft } from "$lib/draft.js";
+  import { isOnline } from "$lib/stores/network.js";
   import type { Editor } from "@tiptap/core";
   import type { Page } from "$lib/stores/page.js";
 
@@ -64,20 +65,11 @@
   let slash = $derived($slashMenuStore);
 
   // ── Draft state ────────────────────────────────────────────────────────────
-  // `hasDraft` = true when IDB has unsynchronised content for this page.
-  // `pendingDraft` holds content loaded from IDB waiting to be applied to editor.
   let hasDraft = $state(false);
   let pendingDraft = $state<string | null>(null);
-  // Timestamp (ms) of the last IDB write — used to guard against stale mutation
-  // callbacks clearing a newer draft (see scheduleContentSave).
   let draftSavedAt = 0;
-  // Prevents setContent() calls in discardDraft/restore from re-triggering autosave.
   let suppressAutoSave = false;
 
-  // Load draft from IDB whenever page changes.
-  // Guards:
-  // - Stale async race: checks page.id still matches when promise resolves.
-  // - Recency: only restores draft if it is newer than the server's last save.
   $effect(() => {
     const pageId = page.id;
     const serverUpdatedAt = new Date(page.updatedAt).getTime();
@@ -86,24 +78,19 @@
       pendingDraft = null;
     });
     loadDraft(pageId).then((draft) => {
-      // Ignore result if page changed while IDB was loading.
       if (page.id !== pageId) return;
       if (draft) {
         if (draft.savedAt > serverUpdatedAt) {
-          // Local draft is newer than server — restore it.
           pendingDraft = draft.content;
           hasDraft = true;
         } else {
-          // Server is newer (e.g. synced from another device) — discard stale draft.
           clearDraft(pageId).catch(() => {});
         }
       }
     });
   });
 
-  // Apply draft to editor as soon as both are ready.
-  // Calling setContent() also triggers onUpdate → scheduleContentSave so the
-  // draft is re-queued as a fresh mutation when back online.
+  // Apply draft and scan for pending images once editor + draft are both ready.
   $effect(() => {
     const ed = editor;
     const draft = pendingDraft;
@@ -111,9 +98,148 @@
       untrack(() => {
         try {
           ed.commands.setContent(JSON.parse(draft));
+          // Count any images that were queued offline (embedded as base64 with pendingId).
+          pendingImageCount = countPendingImages(ed);
         } catch {}
         pendingDraft = null;
       });
+    }
+  });
+
+  // ── Offline image upload queue ─────────────────────────────────────────────
+  // Strategy: when offline, convert File → base64 data URL and insert as an image
+  // node tagged with a unique `pendingId`. The base64 is stored inside the draft
+  // JSON in IDB, so it survives browser close. On reconnect, all pending images
+  // are uploaded to Cloudinary and their nodes updated with the permanent URL.
+
+  let pendingImageCount = $state(0);
+  let isProcessingImages = false;
+
+  /** Count image nodes in the editor that are awaiting upload (non-error pendingId). */
+  function countPendingImages(ed: Editor): number {
+    let n = 0;
+    ed.state.doc.descendants((node) => {
+      if (
+        node.type.name === "image" &&
+        node.attrs.pendingId &&
+        !String(node.attrs.pendingId).startsWith("error:")
+      ) {
+        n++;
+      }
+    });
+    return n;
+  }
+
+  /** Convert a File to a base64 data URL (works offline, survives IDB serialisation). */
+  function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /** Convert a base64 data URL back to a File for re-uploading. */
+  function dataUrlToFile(dataUrl: string, filename: string): File {
+    const [header, data] = dataUrl.split(",");
+    const mimeType = header?.match(/:(.*?);/)?.[1] ?? "image/png";
+    const ext = mimeType.split("/")[1] ?? "png";
+    const binary = atob(data ?? "");
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new File([bytes], `${filename}.${ext}`, { type: mimeType });
+  }
+
+  /**
+   * Called by EditorArea (toolbar button, drag-drop, paste) for every image file.
+   * - Online: uploads immediately to Cloudinary, returns permanent URL.
+   * - Offline: embeds as base64 with a pendingId; upload is deferred to reconnect.
+   */
+  async function handleImageFile(file: File): Promise<ImageFileResult> {
+    if (navigator.onLine) {
+      const src = await uploadImage(file);
+      return { src };
+    }
+    const id = crypto.randomUUID();
+    const src = await fileToDataUrl(file);
+    pendingImageCount++;
+    return { src, pendingId: id };
+  }
+
+  /**
+   * Scan the editor for pending-image nodes, upload each to Cloudinary, and
+   * replace the base64 placeholder with the permanent URL.
+   * Stops early if the device goes offline mid-processing.
+   */
+  async function processImageQueue() {
+    if (isProcessingImages || !editor) return;
+    isProcessingImages = true;
+    try {
+      // Snapshot all pending nodes (pos can shift as we dispatch, so find by id each time).
+      const pending: { id: string; src: string }[] = [];
+      editor.state.doc.descendants((node) => {
+        if (
+          node.type.name === "image" &&
+          node.attrs.pendingId &&
+          !String(node.attrs.pendingId).startsWith("error:")
+        ) {
+          pending.push({ id: node.attrs.pendingId as string, src: node.attrs.src as string });
+        }
+      });
+
+      for (const { id, src } of pending) {
+        if (!navigator.onLine) break; // went offline mid-flight — stop and wait for next reconnect
+
+        try {
+          const file = dataUrlToFile(src, `pending-${id}`);
+          const url = await uploadImage(file);
+
+          // Re-locate the node by pendingId (position may have changed).
+          editor.state.doc.descendants((node, pos) => {
+            if (node.type.name === "image" && node.attrs.pendingId === id) {
+              editor!.view.dispatch(
+                editor!.state.tr.setNodeMarkup(pos, null, {
+                  ...node.attrs,
+                  src: url,
+                  pendingId: null,
+                })
+              );
+              return false;
+            }
+          });
+
+          pendingImageCount = Math.max(0, pendingImageCount - 1);
+        } catch {
+          if (!navigator.onLine) break; // transient offline — will retry on reconnect
+
+          // Permanent server/Cloudinary error: mark node so user knows.
+          editor.state.doc.descendants((node, pos) => {
+            if (node.type.name === "image" && node.attrs.pendingId === id) {
+              editor!.view.dispatch(
+                editor!.state.tr.setNodeMarkup(pos, null, {
+                  ...node.attrs,
+                  pendingId: `error:${id}`,
+                })
+              );
+              return false;
+            }
+          });
+          pendingImageCount = Math.max(0, pendingImageCount - 1);
+        }
+      }
+    } finally {
+      isProcessingImages = false;
+    }
+  }
+
+  // Trigger image queue processing when we come back online or editor becomes ready.
+  $effect(() => {
+    const online = $isOnline;
+    const ed = editor;
+    const count = pendingImageCount;
+    if (online && ed && count > 0) {
+      processImageQueue();
     }
   });
 
@@ -126,9 +252,6 @@
   );
 
   // ── Mutations ──────────────────────────────────────────────────────────────
-  // onSuccess/onError are attached per-call in scheduleContentSave so each
-  // closure captures its own capturedSavedAt — prevents an older mutation
-  // result from clearing a newer draft already written to IDB.
   const saveContent = createMutation(() => ({ mutationFn: updatePageFn }));
   const saveVersion = createMutation(() => ({ mutationFn: saveVersionFn }));
 
@@ -140,10 +263,6 @@
   }
 
   // ── Content auto-save (debounced 1 s) ─────────────────────────────────────
-  // Draft is written to IDB immediately (works offline); the server mutation
-  // fires after the debounce window and is paused automatically when offline.
-  // Per-call callbacks capture `capturedSavedAt` so an older mutation result
-  // cannot clear a newer IDB draft written while it was in-flight.
   function scheduleContentSave(json: string) {
     if (suppressAutoSave) return;
 
@@ -153,22 +272,16 @@
 
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      const capturedSavedAt = draftSavedAt; // snapshot version at mutation fire time
+      const capturedSavedAt = draftSavedAt;
       const capturedPageId = page.id;
       saveContent.mutate({ id: capturedPageId, content: json }, {
         onSuccess: () => {
-          // Only clear if no newer draft was written to IDB since this mutation fired.
-          // Offline mutations are PAUSED (not errored), so onSuccess/onError only
-          // fire for actual server responses.
           if (draftSavedAt <= capturedSavedAt) {
             clearDraft(capturedPageId).catch(() => {});
             hasDraft = false;
           }
         },
         onError: () => {
-          // Server returned a real error (4xx/5xx), not an offline network pause.
-          // Clear draft only if no newer edits exist — otherwise the next mutation
-          // will handle clearing after it syncs.
           if (draftSavedAt <= capturedSavedAt) {
             clearDraft(capturedPageId).catch(() => {});
             hasDraft = false;
@@ -179,13 +292,10 @@
   }
 
   // ── Discard draft ──────────────────────────────────────────────────────────
-  // Remove the local draft and restore the last content saved on the server.
-  // `suppressAutoSave` prevents the setContent call from re-triggering autosave
-  // which would immediately recreate the draft (especially when offline).
   function discardDraft() {
     clearDraft(page.id).catch(() => {});
     hasDraft = false;
-    draftSavedAt = 0; // invalidate — any pending callbacks won't re-clear
+    draftSavedAt = 0;
     clearTimeout(saveTimer);
     if (editor) {
       suppressAutoSave = true;
@@ -199,7 +309,7 @@
     }
   }
 
-  // ── Image upload ──────────────────────────────────────────────────────────
+  // ── Image upload (toolbar button) ─────────────────────────────────────────
   function handleImageUpload() {
     const input = document.createElement("input");
     input.type = "file";
@@ -208,8 +318,12 @@
       const file = input.files?.[0];
       if (!file || !editor) return;
       try {
-        const url = await uploadImage(file);
-        editor.chain().focus().setImage({ src: url }).run();
+        const result = await handleImageFile(file);
+        editor!.chain().focus().setImage({
+          src: result.src,
+          align: "center",
+          ...(result.pendingId ? { pendingId: result.pendingId } : {}),
+        }).run();
       } catch (err) {
         console.error("Image upload failed:", err);
       }
@@ -327,6 +441,7 @@
     {commentPanelOpen}
     commentCount={openCommentCount}
     {hasDraft}
+    {pendingImageCount}
     onImageUpload={handleImageUpload}
     onSaveVersion={handleSaveVersion}
     onOpenHistory={() => (historyOpen = true)}
@@ -342,6 +457,7 @@
     bind:imageBubble
     onOpenContextMenu={openContextMenu}
     onCommentClick={handleCommentClick}
+    onImageFile={handleImageFile}
   />
 </div>
 

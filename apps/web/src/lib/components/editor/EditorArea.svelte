@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { createEditor } from "$lib/editor.js";
+  import { createEditor, type ImageFileResult } from "$lib/editor.js";
   import type { Editor } from "@tiptap/core";
   import type { Page } from "$lib/stores/page.js";
   import { GripVertical } from "lucide-svelte";
@@ -13,6 +13,7 @@
     imageBubble = $bindable(null),
     onOpenContextMenu,
     onCommentClick,
+    onImageFile,
   }: {
     page: Page;
     onUpdate: (json: string) => void;
@@ -21,6 +22,7 @@
     imageBubble?: { left: number; top: number } | null;
     onOpenContextMenu?: (data: { x: number; y: number; blockPos: number | null }) => void;
     onCommentClick?: (commentId: string) => void;
+    onImageFile?: (file: File) => Promise<ImageFileResult>;
   } = $props();
 
   let editorEl = $state<HTMLDivElement | null>(null);
@@ -95,6 +97,7 @@
       element: editorEl,
       content: page.content,
       onUpdate: (json) => onUpdate(json),
+      onImageFile,
     });
     editor = inst;
     inst.on("selectionUpdate", checkImageSelection);
@@ -178,6 +181,20 @@
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }
+
+  /* Pending upload: dimmed with dashed border to signal "not yet synced" */
+  :global(.ProseMirror img[data-pending-id]) {
+    opacity: 0.55;
+    outline: 2px dashed hsl(var(--muted-foreground));
+    outline-offset: 3px;
+  }
+  /* Error state: red dashed border */
+  :global(.ProseMirror img[data-pending-id^="error:"]) {
+    opacity: 0.4;
+    outline: 2px dashed hsl(var(--destructive));
+    outline-offset: 3px;
+  }
+
   :global(.ProseMirror hr) {
     border: none;
     border-top: 2px solid hsl(var(--border));

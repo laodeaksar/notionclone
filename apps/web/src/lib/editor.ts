@@ -130,7 +130,7 @@ export const CommentMark = Mark.create({
   },
 });
 
-// ── Custom Image extension with align attribute ────────────────────────────────
+// ── Custom Image extension with align + pendingId attributes ──────────────────
 
 export const CustomImage = Image.extend({
   addAttributes() {
@@ -152,6 +152,14 @@ export const CustomImage = Image.extend({
         },
         parseHTML: (element) =>
           element.getAttribute("data-align") ?? "center",
+      },
+      // Identifies images queued for upload while offline.
+      // Value: unique ID string while pending; "error:<id>" on permanent failure; null when synced.
+      pendingId: {
+        default: null,
+        parseHTML: (el) => el.getAttribute("data-pending-id") ?? null,
+        renderHTML: (attrs) =>
+          attrs.pendingId ? { "data-pending-id": attrs.pendingId } : {},
       },
     };
   },
@@ -274,11 +282,19 @@ const SlashMenuExtension = Extension.create({
 
 // ── Editor factory ────────────────────────────────────────────────────────────
 
+export interface ImageFileResult {
+  src: string;
+  pendingId?: string | null;
+}
+
 export interface CreateEditorOptions {
   element: HTMLElement;
   content?: string | null;
   placeholder?: string;
   onUpdate?: (contentJson: string) => void;
+  /** Called for every image file (upload button, drag-drop, paste).
+   *  Returns the src to use and an optional pendingId for offline-queued uploads. */
+  onImageFile?: (file: File) => Promise<ImageFileResult>;
 }
 
 export function createEditor({
@@ -286,6 +302,7 @@ export function createEditor({
   content,
   placeholder = "Write something, or type / for blocks…",
   onUpdate,
+  onImageFile,
 }: CreateEditorOptions): Editor {
   let parsedContent: object | null = null;
   if (content) {
@@ -295,6 +312,12 @@ export function createEditor({
       parsedContent = null;
     }
   }
+
+  // Default handler: upload immediately (online-only fallback when no handler provided).
+  const handleFile = onImageFile ?? (async (file: File): Promise<ImageFileResult> => {
+    const url = await uploadImage(file);
+    return { src: url };
+  });
 
   return new Editor({
     element,
@@ -321,12 +344,16 @@ export function createEditor({
         onDrop: (currentEditor, files, pos) => {
           files.forEach(async (file: File) => {
             try {
-              const url = await uploadImage(file);
+              const result = await handleFile(file);
               currentEditor
                 .chain()
                 .insertContentAt(pos, {
                   type: "image",
-                  attrs: { src: url, align: "center" },
+                  attrs: {
+                    src: result.src,
+                    align: "center",
+                    pendingId: result.pendingId ?? null,
+                  },
                 })
                 .run();
             } catch (err) {
@@ -337,12 +364,16 @@ export function createEditor({
         onPaste: (currentEditor, files) => {
           files.forEach(async (file: File) => {
             try {
-              const url = await uploadImage(file);
+              const result = await handleFile(file);
               currentEditor
                 .chain()
                 .insertContent({
                   type: "image",
-                  attrs: { src: url, align: "center" },
+                  attrs: {
+                    src: result.src,
+                    align: "center",
+                    pendingId: result.pendingId ?? null,
+                  },
                 })
                 .run();
             } catch (err) {
