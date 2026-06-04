@@ -1,8 +1,9 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-  import { useSession } from "$lib/auth-client.js";
+  import { authClient, useSession } from "$lib/auth-client.js";
   import { userStore, type User } from "$lib/stores/user.js";
+  import { isOnline } from "$lib/stores/network.js";
   import Sidebar from "$lib/components/Sidebar.svelte";
   import CommandPalette from "$lib/components/CommandPalette.svelte";
   import OfflineIndicator from "$lib/components/OfflineIndicator.svelte";
@@ -12,16 +13,50 @@
 
   const session = useSession();
 
-  const ready = $derived(!$session.isPending && !!$session.data?.user);
-
+  // Persist user to localStorage whenever session data arrives.
   $effect(() => {
     if ($session.data?.user) {
       userStore.set($session.data.user as User);
     }
-    if (!$session.isPending && !$session.error && !$session.data?.user) {
+  });
+
+  // App is ready when:
+  // 1. Session confirmed with user (normal online path), OR
+  // 2. Offline but a user exists in the localStorage-backed store
+  //    (user was previously authenticated; SW/IDB cache may serve data)
+  const ready = $derived(
+    !!$session.data?.user ||
+    (!$isOnline && $userStore !== null)
+  );
+
+  // Redirect to login ONLY when:
+  // - Online (not a transient network failure)
+  // - Session finished loading (not pending)
+  // - No network error (genuinely unauthenticated, not a fetch failure)
+  // - No user in session response
+  $effect(() => {
+    if ($isOnline && !$session.isPending && !$session.error && !$session.data?.user) {
+      userStore.set(null);
       const redirectTo = $page.url.pathname + $page.url.search;
       goto(`/login?redirectTo=${encodeURIComponent(redirectTo)}`);
     }
+  });
+
+  // Re-verify session against server when connection is restored.
+  // Track previous online state to detect transitions.
+  let prevOnline = $state($isOnline);
+  $effect(() => {
+    const online = $isOnline;
+    if (online && !prevOnline && $userStore !== null) {
+      authClient.getSession().then((result) => {
+        if (!result.data?.user) {
+          userStore.set(null);
+          const redirectTo = $page.url.pathname + $page.url.search;
+          goto(`/login?redirectTo=${encodeURIComponent(redirectTo)}`);
+        }
+      });
+    }
+    prevOnline = online;
   });
 
   function handleGlobalKeydown(e: KeyboardEvent) {
