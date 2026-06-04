@@ -175,15 +175,28 @@
     <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
       <!-- Mobile top bar (hamburger) — hidden on desktop -->
       <div class="flex items-center h-12 px-4 border-b border-border shrink-0 md:hidden bg-background">
-        <button
-          onclick={() => (drawerOpen = !drawerOpen)}
-          class="p-1.5 -ml-1.5 rounded-md text-muted-foreground hover:text-foreground
-                 hover:bg-accent transition-colors"
-          aria-label="Open menu"
-          aria-expanded={drawerOpen}
-        >
-          <Menu class="w-5 h-5" />
-        </button>
+        <div class="relative group">
+          <button
+            onclick={() => (drawerOpen = !drawerOpen)}
+            class="p-1.5 -ml-1.5 rounded-md text-muted-foreground hover:text-foreground
+                   hover:bg-accent transition-colors"
+            aria-label="Toggle sidebar"
+            aria-expanded={drawerOpen}
+          >
+            <Menu class="w-5 h-5" />
+          </button>
+          <!-- Tooltip -->
+          <div
+            class="pointer-events-none absolute left-0 top-full mt-2 z-50
+                   opacity-0 group-hover:opacity-100 transition-opacity duration-150
+                   flex items-center gap-1.5 whitespace-nowrap
+                   rounded-md bg-popover text-popover-foreground
+                   border border-border shadow-md px-2.5 py-1.5 text-xs"
+          >
+            Toggle sidebar
+            <kbd class="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground">⌘\</kbd>
+          </div>
+        </div>
       </div>
 
       <main class="flex-1 overflow-y-auto">
