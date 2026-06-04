@@ -68,6 +68,11 @@
   // `pendingDraft` holds content loaded from IDB waiting to be applied to editor.
   let hasDraft = $state(false);
   let pendingDraft = $state<string | null>(null);
+  // Timestamp (ms) of the last IDB write — used to guard against stale mutation
+  // callbacks clearing a newer draft (see scheduleContentSave).
+  let draftSavedAt = 0;
+  // Prevents setContent() calls in discardDraft/restore from re-triggering autosave.
+  let suppressAutoSave = false;
 
   // Load draft from IDB whenever page changes.
   // Guards:
@@ -121,22 +126,10 @@
   );
 
   // ── Mutations ──────────────────────────────────────────────────────────────
-  const saveContent = createMutation(() => ({
-    mutationFn: updatePageFn,
-    onSuccess: (_data: Page, variables: { id: string; content?: string | null }) => {
-      // Draft is now persisted on the server — remove local copy.
-      clearDraft(variables.id).catch(() => {});
-      hasDraft = false;
-    },
-    onError: (_error: unknown, variables: { id: string; content?: string | null }) => {
-      // Server returned a real error (4xx/5xx) — not an offline pause.
-      // Offline mutations are PAUSED by networkMode:"offlineFirst", never errored.
-      // So onError always means a server/business-logic failure; clear the draft
-      // to avoid retrying bad content on next load.
-      clearDraft(variables.id).catch(() => {});
-      hasDraft = false;
-    },
-  }));
+  // onSuccess/onError are attached per-call in scheduleContentSave so each
+  // closure captures its own capturedSavedAt — prevents an older mutation
+  // result from clearing a newer draft already written to IDB.
+  const saveContent = createMutation(() => ({ mutationFn: updatePageFn }));
   const saveVersion = createMutation(() => ({ mutationFn: saveVersionFn }));
 
   // ── Title ──────────────────────────────────────────────────────────────────
@@ -149,29 +142,60 @@
   // ── Content auto-save (debounced 1 s) ─────────────────────────────────────
   // Draft is written to IDB immediately (works offline); the server mutation
   // fires after the debounce window and is paused automatically when offline.
+  // Per-call callbacks capture `capturedSavedAt` so an older mutation result
+  // cannot clear a newer IDB draft written while it was in-flight.
   function scheduleContentSave(json: string) {
-    // Persist to IDB right away — survives browser close while offline.
+    if (suppressAutoSave) return;
+
+    draftSavedAt = Date.now();
     saveDraft(page.id, json).catch(() => {});
     hasDraft = true;
 
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      saveContent.mutate({ id: page.id, content: json });
+      const capturedSavedAt = draftSavedAt; // snapshot version at mutation fire time
+      const capturedPageId = page.id;
+      saveContent.mutate({ id: capturedPageId, content: json }, {
+        onSuccess: () => {
+          // Only clear if no newer draft was written to IDB since this mutation fired.
+          // Offline mutations are PAUSED (not errored), so onSuccess/onError only
+          // fire for actual server responses.
+          if (draftSavedAt <= capturedSavedAt) {
+            clearDraft(capturedPageId).catch(() => {});
+            hasDraft = false;
+          }
+        },
+        onError: () => {
+          // Server returned a real error (4xx/5xx), not an offline network pause.
+          // Clear draft only if no newer edits exist — otherwise the next mutation
+          // will handle clearing after it syncs.
+          if (draftSavedAt <= capturedSavedAt) {
+            clearDraft(capturedPageId).catch(() => {});
+            hasDraft = false;
+          }
+        },
+      });
     }, 1000);
   }
 
   // ── Discard draft ──────────────────────────────────────────────────────────
   // Remove the local draft and restore the last content saved on the server.
-  async function discardDraft() {
-    await clearDraft(page.id).catch(() => {});
+  // `suppressAutoSave` prevents the setContent call from re-triggering autosave
+  // which would immediately recreate the draft (especially when offline).
+  function discardDraft() {
+    clearDraft(page.id).catch(() => {});
     hasDraft = false;
+    draftSavedAt = 0; // invalidate — any pending callbacks won't re-clear
+    clearTimeout(saveTimer);
     if (editor) {
+      suppressAutoSave = true;
       try {
         const serverContent = page.content ? JSON.parse(page.content) : null;
         editor.commands.setContent(serverContent ?? { type: "doc", content: [{ type: "paragraph" }] });
       } catch {
         editor.commands.setContent({ type: "doc", content: [{ type: "paragraph" }] });
       }
+      suppressAutoSave = false;
     }
   }
 
