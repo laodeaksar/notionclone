@@ -284,7 +284,7 @@ export interface CreateEditorOptions {
 export function createEditor({
   element,
   content,
-  placeholder = "Start writing, or press / for commands…",
+  placeholder = "Write something, or type / for blocks…",
   onUpdate,
 }: CreateEditorOptions): Editor {
   let parsedContent: object | null = null;
@@ -303,7 +303,11 @@ export function createEditor({
       StarterKit,
       CustomImage.configure({ allowBase64: true }),
       Placeholder.configure({ placeholder }),
-      Typography,
+      Typography.configure({
+        // Disable em-dash so "---" fires the horizontal-rule input rule
+        // instead of being converted to "—" + "-" by Typography first.
+        emDash: false,
+      }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       CommentMark,
       SlashMenuExtension,
