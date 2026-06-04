@@ -491,11 +491,13 @@
 <CommentBubble
   {editor}
   pageId={page.id}
+  workspaceId={page.workspaceId}
   onCommentCreated={handleCommentCreated}
 />
 
 <CommentPanel
   pageId={page.id}
+  workspaceId={page.workspaceId}
   open={commentPanelOpen}
   {editor}
   {currentUserId}

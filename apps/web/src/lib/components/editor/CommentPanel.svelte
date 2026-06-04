@@ -4,15 +4,19 @@
   import {
     commentsQueryOptions,
     commentsKey,
+    workspaceMembersQueryOptions,
     createReplyFn,
     updateCommentFn,
     deleteCommentFn,
     type CommentThread,
   } from "$lib/queries.js";
-  import { X, MessageSquare, Loader2 } from "lucide-svelte";
+  import { renderMentions } from "$lib/mentionUtils.js";
+  import { X, MessageSquare } from "lucide-svelte";
+  import MentionInput from "./MentionInput.svelte";
 
   let {
     pageId,
+    workspaceId,
     open,
     editor,
     currentUserId = "",
@@ -20,6 +24,7 @@
     onClose,
   }: {
     pageId: string;
+    workspaceId: string;
     open: boolean;
     editor: Editor | null;
     currentUserId?: string;
@@ -29,6 +34,9 @@
 
   const queryClient = useQueryClient();
   const commentsQuery = createQuery(() => commentsQueryOptions(pageId, open));
+  const membersQuery = createQuery(() => workspaceMembersQueryOptions(workspaceId));
+
+  const memberNames = $derived((membersQuery.data ?? []).map((m) => m.user.name));
 
   let activeTab = $state<"open" | "resolved">("open");
   let replyingTo = $state<string | null>(null);
@@ -109,22 +117,14 @@
   }
 
   function initials(name: string) {
-    return name
-      .split(" ")
-      .map((n) => n[0] ?? "")
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
+    return name.split(" ").map((n) => n[0] ?? "").join("").slice(0, 2).toUpperCase();
   }
 
   function avatarColor(name: string) {
     const colors = [
-      "bg-blue-100 text-blue-700",
-      "bg-green-100 text-green-700",
-      "bg-purple-100 text-purple-700",
-      "bg-orange-100 text-orange-700",
-      "bg-pink-100 text-pink-700",
-      "bg-teal-100 text-teal-700",
+      "bg-blue-100 text-blue-700", "bg-green-100 text-green-700",
+      "bg-purple-100 text-purple-700", "bg-orange-100 text-orange-700",
+      "bg-pink-100 text-pink-700", "bg-teal-100 text-teal-700",
     ];
     let hash = 0;
     for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) % colors.length;
@@ -143,8 +143,8 @@
   class:translate-x-full={!open}
   class:translate-x-0={open}
   aria-hidden={!open}
-  aria-label="Comments panel"
   role="complementary"
+  aria-label="Comments panel"
 >
   <!-- Header -->
   <div class="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
@@ -155,7 +155,7 @@
              hover:bg-accent text-muted-foreground transition-colors"
       aria-label="Close comments"
     >
-      <X class="w-4 h-4" />
+      <X class="w-3.5 h-3.5" />
     </button>
   </div>
 
@@ -195,7 +195,9 @@
         {#each threads as thread (thread.id)}
           <div
             id="comment-{thread.id}"
-            class="p-4 cursor-pointer transition-colors {highlightedId === thread.id ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}"
+            class="p-4 cursor-pointer transition-colors"
+            class:bg-yellow-50={highlightedId === thread.id}
+            class:dark:bg-yellow-950/20={highlightedId === thread.id}
             onclick={() => handleThreadClick(thread)}
             role="button"
             tabindex="0"
@@ -220,7 +222,10 @@
                   <span class="text-xs font-semibold truncate">{thread.author.name}</span>
                   <span class="text-xs text-muted-foreground shrink-0">{formatTime(thread.createdAt)}</span>
                 </div>
-                <p class="text-xs leading-relaxed break-words text-foreground/90">{thread.content}</p>
+                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                <p class="text-xs leading-relaxed break-words text-foreground/90">
+                  {@html renderMentions(thread.content, memberNames)}
+                </p>
               </div>
             </div>
 
@@ -274,15 +279,18 @@
                         <span class="text-xs font-semibold truncate">{reply.author.name}</span>
                         <span class="text-xs text-muted-foreground shrink-0">{formatTime(reply.createdAt)}</span>
                       </div>
-                      <p class="text-xs leading-relaxed break-words">{reply.content}</p>
+                      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                      <p class="text-xs leading-relaxed break-words">
+                        {@html renderMentions(reply.content, memberNames)}
+                      </p>
                     </div>
                     {#if reply.authorId === currentUserId}
                       <button
                         onclick={(e) => { e.stopPropagation(); deleteComment.mutate(reply.id); }}
-                        class="shrink-0 p-0.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        class="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
                         aria-label="Delete reply"
                       >
-                        <X class="w-3 h-3" />
+                        <X class="w-2.5 h-2.5" />
                       </button>
                     {/if}
                   </div>
@@ -297,17 +305,17 @@
                 onclick={(e) => e.stopPropagation()}
                 role="presentation"
               >
-                <textarea
+                <MentionInput
                   bind:value={replyText}
-                  placeholder="Reply…"
+                  {workspaceId}
+                  placeholder="Reply… (type @ to mention)"
                   rows={2}
-                  onkeydown={(e) => {
-                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitReply(thread.id);
-                    if (e.key === "Escape") { replyingTo = null; replyText = ""; }
-                  }}
-                  class="w-full text-xs resize-none bg-muted rounded-lg p-2
-                         border border-border outline-none focus:ring-1 focus:ring-ring"
-                ></textarea>
+                  autofocus
+                  textareaClass="w-full text-xs resize-none bg-muted rounded-lg p-2
+                                 border border-border outline-none focus:ring-1 focus:ring-ring"
+                  onSubmit={() => submitReply(thread.id)}
+                  onEscape={() => { replyingTo = null; replyText = ""; }}
+                />
                 <div class="flex justify-end gap-2 mt-1.5">
                   <button
                     onclick={() => { replyingTo = null; replyText = ""; }}
@@ -318,13 +326,9 @@
                   <button
                     onclick={() => submitReply(thread.id)}
                     disabled={!replyText.trim() || addReply.isPending}
-                    class="flex items-center gap-1 px-2 py-1 text-xs rounded bg-foreground text-background disabled:opacity-50"
+                    class="px-2 py-1 text-xs rounded bg-foreground text-background disabled:opacity-50"
                   >
-                    {#if addReply.isPending}
-                      <Loader2 class="w-3 h-3 animate-spin" />
-                    {:else}
-                      Reply
-                    {/if}
+                    {addReply.isPending ? "…" : "Reply"}
                   </button>
                 </div>
               </div>
@@ -335,3 +339,17 @@
     {/if}
   </div>
 </div>
+
+<style>
+  :global(.mention) {
+    background-color: rgba(147, 197, 253, 0.3);
+    color: rgb(37, 99, 235);
+    border-radius: 3px;
+    padding: 0 2px;
+    font-weight: 500;
+  }
+  :global(.dark .mention) {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: rgb(147, 197, 253);
+  }
+</style>

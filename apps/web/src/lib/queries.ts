@@ -37,6 +37,15 @@ export interface CommentThread {
   replies: CommentReply[];
 }
 
+export interface WorkspaceMember {
+  id: string;
+  userId: string;
+  workspaceId: string;
+  role: string;
+  createdAt: string | number;
+  user: { id: string; name: string; email: string; image: string | null };
+}
+
 export interface PageVersion {
   id: string;
   pageId: string;
@@ -57,6 +66,7 @@ export const versionsKey = (pageId: string) => ["versions", pageId] as const;
 
 // backward-compat aliases used in older Sidebar import
 export const commentsKey = (pageId: string) => ["comments", pageId] as const;
+export const membersKey = (workspaceId: string) => ["members", workspaceId] as const;
 
 export const workspacesQueryKey = workspacesKey();
 export const pagesQueryKey = pagesKey;
@@ -187,6 +197,23 @@ export async function restoreVersionFn(input: {
   );
   if (!res.ok) throw new Error("Restore failed");
   return res.json() as Promise<Page>;
+}
+
+// ── Workspace Members ─────────────────────────────────────────────────────────
+
+export function workspaceMembersQueryOptions(workspaceId: string) {
+  return {
+    queryKey: membersKey(workspaceId),
+    queryFn: async (): Promise<WorkspaceMember[]> => {
+      const res = await fetch(`/api/workspaces/${workspaceId}/members`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to load members");
+      return res.json() as Promise<WorkspaceMember[]>;
+    },
+    enabled: workspaceId.length > 0,
+    staleTime: 60_000,
+  };
 }
 
 // ── Comment Query / Mutations ─────────────────────────────────────────────────

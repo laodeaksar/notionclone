@@ -3,14 +3,17 @@
   import type { Editor } from "@tiptap/core";
   import { commentsKey, createCommentFn, type CommentThread } from "$lib/queries.js";
   import { MessageSquare, Loader2 } from "lucide-svelte";
+  import MentionInput from "./MentionInput.svelte";
 
   let {
     editor,
     pageId,
+    workspaceId,
     onCommentCreated,
   }: {
     editor: Editor | null;
     pageId: string;
+    workspaceId: string;
     onCommentCreated?: (c: CommentThread) => void;
   } = $props();
 
@@ -22,7 +25,6 @@
   let savedFrom = $state(0);
   let savedTo = $state(0);
   let savedQuote = $state("");
-  let textareaEl = $state<HTMLTextAreaElement | null>(null);
 
   $effect(() => {
     if (!editor) return;
@@ -48,12 +50,6 @@
     editor.on("blur", () => { if (!formOpen) bubblePos = null; });
 
     return () => { editor.off("selectionUpdate", onSelection); };
-  });
-
-  $effect(() => {
-    if (formOpen && textareaEl) {
-      setTimeout(() => textareaEl?.focus(), 30);
-    }
   });
 
   const createComment = createMutation(() => ({
@@ -136,18 +132,17 @@
     {/if}
 
     <div class="p-4">
-      <textarea
-        bind:this={textareaEl}
+      <MentionInput
         bind:value={commentText}
-        placeholder="Add a comment…"
+        {workspaceId}
+        placeholder="Add a comment… (type @ to mention)"
         rows={3}
-        onkeydown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
-          if (e.key === "Escape") cancel();
-        }}
-        class="w-full text-sm resize-none bg-transparent outline-none
-               placeholder:text-muted-foreground leading-relaxed"
-      ></textarea>
+        autofocus
+        textareaClass="w-full text-sm resize-none bg-transparent outline-none
+                       placeholder:text-muted-foreground leading-relaxed"
+        onSubmit={submit}
+        onEscape={cancel}
+      />
       <div class="flex justify-end gap-2 mt-2 pt-2 border-t border-border">
         <button
           onclick={cancel}
@@ -159,8 +154,8 @@
         <button
           onclick={submit}
           disabled={!commentText.trim() || createComment.isPending}
-          class="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-foreground text-background
-                 font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
+          class="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-foreground
+                 text-background font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
         >
           {#if createComment.isPending}
             <Loader2 class="w-3 h-3 animate-spin" />
