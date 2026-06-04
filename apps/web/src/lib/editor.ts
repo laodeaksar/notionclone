@@ -14,6 +14,7 @@ export interface SlashItem {
   title: string;
   description: string;
   icon: string;
+  shortcut?: string;
   command: (editor: Editor) => void;
 }
 
@@ -22,18 +23,21 @@ export const SLASH_ITEMS: SlashItem[] = [
     title: "Heading 1",
     description: "Large section heading",
     icon: "heading-1",
+    shortcut: "#",
     command: (e) => e.chain().focus().toggleHeading({ level: 1 }).run(),
   },
   {
     title: "Heading 2",
     description: "Medium section heading",
     icon: "heading-2",
+    shortcut: "##",
     command: (e) => e.chain().focus().toggleHeading({ level: 2 }).run(),
   },
   {
     title: "Heading 3",
     description: "Small section heading",
     icon: "heading-3",
+    shortcut: "###",
     command: (e) => e.chain().focus().toggleHeading({ level: 3 }).run(),
   },
   {
@@ -46,30 +50,35 @@ export const SLASH_ITEMS: SlashItem[] = [
     title: "Bullet List",
     description: "Unordered list",
     icon: "list",
+    shortcut: "-",
     command: (e) => e.chain().focus().toggleBulletList().run(),
   },
   {
     title: "Ordered List",
     description: "Numbered list",
     icon: "list-ordered",
+    shortcut: "1.",
     command: (e) => e.chain().focus().toggleOrderedList().run(),
   },
   {
     title: "Code Block",
     description: "Code snippet",
     icon: "code-2",
+    shortcut: "```",
     command: (e) => e.chain().focus().toggleCodeBlock().run(),
   },
   {
     title: "Blockquote",
     description: "Quote or callout",
     icon: "quote",
+    shortcut: ">",
     command: (e) => e.chain().focus().toggleBlockquote().run(),
   },
   {
     title: "Divider",
     description: "Horizontal separator",
     icon: "minus",
+    shortcut: "---",
     command: (e) => e.chain().focus().setHorizontalRule().run(),
   },
 ];

@@ -55,10 +55,15 @@
               <svelte:component this={Icon} class="w-4 h-4" strokeWidth={1.75} />
             {/if}
           </div>
-          <div class="min-w-0">
+          <div class="flex-1 min-w-0">
             <p class="font-medium leading-tight">{item.title}</p>
             <p class="text-xs text-muted-foreground mt-0.5">{item.description}</p>
           </div>
+          {#if item.shortcut}
+            <kbd class="shrink-0 text-[10px] font-mono text-muted-foreground bg-muted border border-border rounded px-1.5 py-0.5 leading-none">
+              {item.shortcut}
+            </kbd>
+          {/if}
         </button>
       {/each}
     </div>
