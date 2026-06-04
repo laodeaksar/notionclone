@@ -123,6 +123,10 @@
       e.preventDefault();
       paletteOpen = !paletteOpen;
     }
+    if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
+      e.preventDefault();
+      drawerOpen = !drawerOpen;
+    }
     if (e.key === "Escape" && drawerOpen) {
       drawerOpen = false;
     }
