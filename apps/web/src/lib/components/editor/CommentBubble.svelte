@@ -26,30 +26,59 @@
   let savedTo = $state(0);
   let savedQuote = $state("");
 
-  $effect(() => {
-    if (!editor) return;
+  // Track whether the pointer is held down on the comment button so blur
+  // doesn't clear the bubble before the click registers.
+  let pointerOnButton = false;
 
-    const onSelection = () => {
+  $effect(() => {
+    // Use the native selectionchange event — it fires reliably regardless of
+    // how the editor emits its own events, and doesn't depend on timing with
+    // the editor initialization.
+    function checkSelection() {
       if (formOpen) return;
-      const { from, to, empty } = editor.state.selection;
-      if (empty) { bubblePos = null; return; }
-      const text = editor.state.doc.textBetween(from, to, " ").trim();
+
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+        bubblePos = null;
+        return;
+      }
+
+      const text = sel.toString().trim();
       if (!text) { bubblePos = null; return; }
+
+      // Only show bubble when the selection is inside the editor.
+      if (!editor) { bubblePos = null; return; }
+      const editorDom = editor.view.dom;
+      const range = sel.getRangeAt(0);
+      if (!editorDom.contains(range.commonAncestorContainer)) {
+        bubblePos = null;
+        return;
+      }
+
       try {
-        const startCoords = editor.view.coordsAtPos(from);
-        const endCoords = editor.view.coordsAtPos(to);
-        const midX = (startCoords.left + endCoords.right) / 2;
+        const rect = range.getBoundingClientRect();
+        if (!rect.width && !rect.height) { bubblePos = null; return; }
+        const midX = (rect.left + rect.right) / 2;
         bubblePos = {
           left: Math.max(8, Math.min(midX - 52, window.innerWidth - 116)),
-          top: Math.max(8, startCoords.top - 44),
+          top: Math.max(8, rect.top - 44),
         };
       } catch { bubblePos = null; }
+    }
+
+    // When the editor loses focus clear the bubble — but only if the pointer
+    // isn't currently held down on the comment button itself.
+    function handleBlur() {
+      if (!formOpen && !pointerOnButton) bubblePos = null;
+    }
+
+    document.addEventListener("selectionchange", checkSelection);
+    if (editor) editor.on("blur", handleBlur);
+
+    return () => {
+      document.removeEventListener("selectionchange", checkSelection);
+      if (editor) editor.off("blur", handleBlur);
     };
-
-    editor.on("selectionUpdate", onSelection);
-    editor.on("blur", () => { if (!formOpen) bubblePos = null; });
-
-    return () => { editor.off("selectionUpdate", onSelection); };
   });
 
   const createComment = createMutation(() => ({
@@ -96,7 +125,9 @@
 {#if bubblePos && !formOpen}
   <button
     style="position:fixed;left:{bubblePos.left}px;top:{bubblePos.top}px;z-index:50;"
-    onclick={openForm}
+    onpointerdown={() => { pointerOnButton = true; }}
+    onpointerup={() => { pointerOnButton = false; openForm(); }}
+    onpointercancel={() => { pointerOnButton = false; }}
     class="flex items-center gap-1.5 px-3 py-1.5 bg-foreground text-background
            text-xs font-medium rounded-full shadow-lg hover:opacity-90 transition-opacity
            select-none"
