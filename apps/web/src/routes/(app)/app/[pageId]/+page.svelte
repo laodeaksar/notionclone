@@ -5,6 +5,7 @@
   import { createQuery, createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { pageQueryOptions, pageKey, pagesKey, pagesQueryOptions, updatePageFn, deletePageFn } from "$lib/queries.js";
   import { currentWorkspaceId } from "$lib/stores/workspace.js";
+  import { currentPageMeta } from "$lib/stores/page.js";
   import PageEditor from "$lib/components/PageEditor.svelte";
   import PageBreadcrumb from "$lib/components/PageBreadcrumb.svelte";
 
@@ -34,6 +35,16 @@
       }
     },
   }));
+
+  // Keep mobile top bar in sync with the open page
+  $effect(() => {
+    if (currentPage) {
+      currentPageMeta.set({ title: currentPage.title, icon: currentPage.icon });
+    } else {
+      currentPageMeta.set(null);
+    }
+    return () => currentPageMeta.set(null);
+  });
 
   function handleTitleChange(title: string) {
     if (!currentPage) return;

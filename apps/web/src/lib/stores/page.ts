@@ -1,3 +1,9 @@
+import { writable } from "svelte/store";
+
+// Holds the title + icon of whichever page is currently open.
+// Written by [pageId]/+page.svelte, read by the layout's mobile top bar.
+export const currentPageMeta = writable<{ title: string; icon: string | null } | null>(null);
+
 export interface Page {
   id: string;
   title: string;
