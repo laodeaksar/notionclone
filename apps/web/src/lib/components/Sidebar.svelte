@@ -12,12 +12,18 @@
     createPageFn,
   } from "$lib/queries.js";
   import { createQuery, createMutation, useQueryClient } from "@tanstack/svelte-query";
-  import { PanelLeftClose, PanelLeftOpen, ChevronDown } from "lucide-svelte";
+  import { PanelLeftClose, PanelLeftOpen, ChevronDown, X } from "lucide-svelte";
 
   import WorkspaceSwitcherModal from "./sidebar/WorkspaceSwitcherModal.svelte";
   import SidebarPageTree from "./sidebar/SidebarPageTree.svelte";
   import SidebarFooter from "./sidebar/SidebarFooter.svelte";
   import CreateWorkspaceModal from "./CreateWorkspaceModal.svelte";
+
+  let {
+    onClose,
+  }: {
+    onClose?: () => void;
+  } = $props();
 
   const qc = useQueryClient();
 
@@ -73,7 +79,8 @@
 </script>
 
 <aside
-  class="shrink-0 h-full border-r border-border bg-muted/30 flex flex-col overflow-hidden transition-all duration-200"
+  class="h-full border-r border-border bg-muted/30 flex flex-col overflow-hidden
+         transition-all duration-200"
   class:w-64={!collapsed}
   class:w-12={collapsed}
 >
@@ -82,18 +89,24 @@
     {#if !collapsed}
       <button
         onclick={() => (showWorkspaceSwitcher = true)}
-        class="flex-1 min-w-0 flex items-center gap-1.5 text-left rounded-md px-1 py-0.5 hover:bg-accent transition-colors group"
+        class="flex-1 min-w-0 flex items-center gap-1.5 text-left rounded-md px-1 py-0.5
+               hover:bg-accent transition-colors group"
         title="Switch workspace"
       >
         <span class="font-semibold text-sm truncate flex-1">
           {currentWs?.name ?? "Select workspace"}
         </span>
-        <ChevronDown class="w-3.5 h-3.5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+        <ChevronDown
+          class="w-3.5 h-3.5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors"
+        />
       </button>
     {/if}
+
+    <!-- Collapse toggle — hidden on mobile (drawer handles open/close) -->
     <button
       onclick={() => (collapsed = !collapsed)}
-      class="p-1 rounded hover:bg-accent text-muted-foreground transition-colors shrink-0"
+      class="p-1 rounded hover:bg-accent text-muted-foreground transition-colors shrink-0
+             hidden md:flex"
       title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
       {#if collapsed}
@@ -101,6 +114,16 @@
       {:else}
         <PanelLeftClose class="w-4 h-4" />
       {/if}
+    </button>
+
+    <!-- Close button — only visible on mobile drawer -->
+    <button
+      onclick={onClose}
+      class="p-1 rounded hover:bg-accent text-muted-foreground transition-colors shrink-0
+             flex md:hidden"
+      aria-label="Close menu"
+    >
+      <X class="w-4 h-4" />
     </button>
   </div>
 
