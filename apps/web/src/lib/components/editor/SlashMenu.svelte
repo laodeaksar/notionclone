@@ -52,7 +52,7 @@
         >
           <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-background text-muted-foreground">
             {#if Icon}
-              <svelte:component this={Icon} class="w-4 h-4" strokeWidth={1.75} />
+              <Icon class="w-4 h-4" strokeWidth={1.75} />
             {/if}
           </div>
           <div class="flex-1 min-w-0">

@@ -1,0 +1,37 @@
+src/lib/components/editor/SlashMenu.svelte:55:14 `<svelte:component>` is deprecated in runes mode — components are dynamic by default
+https://svelte.dev/e/svelte_component_deprecated
+53:           <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-background text-muted-foreground">
+54:             {#if Icon}
+55:               <svelte:component this={Icon} class="w-4 h-4" strokeWidth={1.75} />
+                                                                                     ^
+56:             {/if}
+57:           </div>
+[31m✗[39m Build failed in 6.71s
+[31merror during build:
+[31mBuild failed with 1 error:
+
+[plugin vite-plugin-pwa:build]
+Error: Build failed with 1 error:
+
+[plugin vite-plugin-svelte] /vercel/path0/apps/web/src/lib/components/editor/CommentPanel.svelte:200:37
+RolldownError: /vercel/path0/apps/web/src/lib/components/editor/CommentPanel.svelte:200:37 Expected token >
+https://svelte.dev/e/expected_token
+
+- Did you forget to add a lang attribute to your style tag?
+- Did you forget to add a lang attribute to your style tag?
+- Did you forget to add a lang attribute to your style tag?
+- Did you forget to add a lang attribute to your style tag?
+- Did you forget to add a lang attribute to your style tag?
+- Did you forget to add a lang attribute to your style tag?
+- Did you forget to add a lang attribute to your style tag?
+- Did you forget to add a lang attribute to your style tag?
+- Did you forget to add a lang attribute to your style tag?
+- Did you forget to add a lang attribute to your style tag?
+- Did you forget to add a lang attribute to your style tag?
+ 198 |              class="p-4 cursor-pointer transition-colors"
+ 199 |              class:bg-yellow-50={highlightedId === thread.id}
+ 200 |              class:dark:bg-yellow-950/20={highlightedId === thread.id}
+                                             ^
+ 201 |              onclick={() => handleThreadClick(thread)}
+ 202 |              role="button"
+    at aggregateBindingErrorsIntoJsError
