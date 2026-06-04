@@ -117,7 +117,7 @@
              {commentPanelOpen
                ? 'bg-accent text-foreground'
                : 'hover:bg-accent hover:text-foreground'}"
-      title="Toggle comments"
+      title="Toggle comments (⌘⇧M)"
       aria-label="Toggle comments"
     >
       <MessageSquare class="w-4 h-4" />

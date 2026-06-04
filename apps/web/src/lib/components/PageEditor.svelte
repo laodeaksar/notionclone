@@ -417,6 +417,10 @@
       e.preventDefault();
       headerComp?.focusTitle();
     }
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "M") {
+      e.preventDefault();
+      commentPanelOpen = !commentPanelOpen;
+    }
   }
 </script>
 
