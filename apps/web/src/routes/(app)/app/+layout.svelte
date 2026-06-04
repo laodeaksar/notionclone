@@ -13,7 +13,7 @@
 
   const session = useSession();
 
-  // Persist user to localStorage whenever session data arrives.
+  // Persist user to localStorage whenever fresh session data arrives.
   $effect(() => {
     if ($session.data?.user) {
       userStore.set($session.data.user as User);
@@ -22,17 +22,19 @@
 
   // App is ready when:
   // 1. Session confirmed with user (normal online path), OR
-  // 2. Offline but a user exists in the localStorage-backed store
-  //    (user was previously authenticated; SW/IDB cache may serve data)
+  // 2. We have a cached user AND the session is still loading OR we are offline.
+  //    This prevents a spinner flash when:
+  //    - The user was previously logged in (localStorage cache) and session is pending
+  //    - The user comes back online and we are re-verifying in the background
   const ready = $derived(
     !!$session.data?.user ||
-    (!$isOnline && $userStore !== null)
+    ($userStore !== null && ($session.isPending || !$isOnline))
   );
 
   // Redirect to login ONLY when:
   // - Online (not a transient network failure)
   // - Session finished loading (not pending)
-  // - No network error (genuinely unauthenticated, not a fetch failure)
+  // - No network/fetch error (genuinely unauthenticated, not an offline failure)
   // - No user in session response
   $effect(() => {
     if ($isOnline && !$session.isPending && !$session.error && !$session.data?.user) {
@@ -43,17 +45,22 @@
   });
 
   // Re-verify session against server when connection is restored.
-  // Track previous online state to detect transitions.
+  // Only redirect on explicit server confirmation that the session is invalid;
+  // any fetch/network error is treated as a transient failure — stay in the app.
   let prevOnline = $state($isOnline);
   $effect(() => {
     const online = $isOnline;
     if (online && !prevOnline && $userStore !== null) {
       authClient.getSession().then((result) => {
-        if (!result.data?.user) {
+        const requestSucceeded = !result.error;
+        const sessionInvalid = requestSucceeded && !result.data?.user;
+        if (sessionInvalid) {
           userStore.set(null);
           const redirectTo = $page.url.pathname + $page.url.search;
           goto(`/login?redirectTo=${encodeURIComponent(redirectTo)}`);
         }
+        // If result.error is set (network/server error), stay in app — userStore
+        // remains valid so the user can continue working offline-style.
       });
     }
     prevOnline = online;
