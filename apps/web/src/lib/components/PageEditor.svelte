@@ -70,16 +70,28 @@
   let pendingDraft = $state<string | null>(null);
 
   // Load draft from IDB whenever page changes.
+  // Guards:
+  // - Stale async race: checks page.id still matches when promise resolves.
+  // - Recency: only restores draft if it is newer than the server's last save.
   $effect(() => {
     const pageId = page.id;
+    const serverUpdatedAt = new Date(page.updatedAt).getTime();
     untrack(() => {
       hasDraft = false;
       pendingDraft = null;
     });
     loadDraft(pageId).then((draft) => {
+      // Ignore result if page changed while IDB was loading.
+      if (page.id !== pageId) return;
       if (draft) {
-        pendingDraft = draft.content;
-        hasDraft = true;
+        if (draft.savedAt > serverUpdatedAt) {
+          // Local draft is newer than server — restore it.
+          pendingDraft = draft.content;
+          hasDraft = true;
+        } else {
+          // Server is newer (e.g. synced from another device) — discard stale draft.
+          clearDraft(pageId).catch(() => {});
+        }
       }
     });
   });
@@ -113,6 +125,14 @@
     mutationFn: updatePageFn,
     onSuccess: (_data: Page, variables: { id: string; content?: string | null }) => {
       // Draft is now persisted on the server — remove local copy.
+      clearDraft(variables.id).catch(() => {});
+      hasDraft = false;
+    },
+    onError: (_error: unknown, variables: { id: string; content?: string | null }) => {
+      // Server returned a real error (4xx/5xx) — not an offline pause.
+      // Offline mutations are PAUSED by networkMode:"offlineFirst", never errored.
+      // So onError always means a server/business-logic failure; clear the draft
+      // to avoid retrying bad content on next load.
       clearDraft(variables.id).catch(() => {});
       hasDraft = false;
     },
