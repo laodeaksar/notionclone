@@ -3,6 +3,7 @@
   import { createEditor } from "$lib/editor.js";
   import type { Editor } from "@tiptap/core";
   import type { Page } from "$lib/stores/page.js";
+  import { GripVertical } from "lucide-svelte";
 
   let {
     page,
@@ -125,14 +126,7 @@
              opacity-60 hover:opacity-100"
       aria-label="Block options"
     >
-      <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor">
-        <circle cx="2.5" cy="2"  r="1.5"/>
-        <circle cx="7.5" cy="2"  r="1.5"/>
-        <circle cx="2.5" cy="7"  r="1.5"/>
-        <circle cx="7.5" cy="7"  r="1.5"/>
-        <circle cx="2.5" cy="12" r="1.5"/>
-        <circle cx="7.5" cy="12" r="1.5"/>
-      </svg>
+      <GripVertical class="w-4 h-4" strokeWidth={1.5} />
     </button>
   {/if}
 

@@ -1,11 +1,29 @@
 <script lang="ts">
   import { slashMenuStore, type SlashMenuState } from "$lib/editor.js";
+  import {
+    Heading1, Heading2, Heading3,
+    Pilcrow, List, ListOrdered,
+    Code2, Quote, Minus,
+  } from "lucide-svelte";
+  import type { Component } from "svelte";
 
   let {
     slash,
   }: {
     slash: SlashMenuState;
   } = $props();
+
+  const iconMap: Record<string, Component> = {
+    "heading-1": Heading1,
+    "heading-2": Heading2,
+    "heading-3": Heading3,
+    "pilcrow": Pilcrow,
+    "list": List,
+    "list-ordered": ListOrdered,
+    "code-2": Code2,
+    "quote": Quote,
+    "minus": Minus,
+  };
 
   function execSlash(item: typeof slash.items[number]) {
     slash.executeCommand?.(item);
@@ -23,6 +41,7 @@
     </div>
     <div class="max-h-64 overflow-y-auto p-1">
       {#each slash.items as item, i (item.title)}
+        {@const Icon = iconMap[item.icon]}
         <button
           onclick={() => execSlash(item)}
           class="flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm text-left transition-colors"
@@ -31,8 +50,10 @@
           class:text-foreground={i !== slash.selectedIndex}
           class:hover:bg-accent={i !== slash.selectedIndex}
         >
-          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-background font-mono text-xs font-bold text-muted-foreground">
-            {item.icon}
+          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-background text-muted-foreground">
+            {#if Icon}
+              <svelte:component this={Icon} class="w-4 h-4" strokeWidth={1.75} />
+            {/if}
           </div>
           <div class="min-w-0">
             <p class="font-medium leading-tight">{item.title}</p>
