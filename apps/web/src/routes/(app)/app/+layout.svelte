@@ -4,11 +4,13 @@
   import { authClient, useSession } from "$lib/auth-client.js";
   import { userStore, type User } from "$lib/stores/user.js";
   import { isOnline } from "$lib/stores/network.js";
-  import { currentPageMeta } from "$lib/stores/page.js";
+  import { currentWorkspaceId } from "$lib/stores/workspace.js";
+  import { createPageFn, pagesKey } from "$lib/queries.js";
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import Sidebar from "$lib/components/Sidebar.svelte";
   import CommandPalette from "$lib/components/CommandPalette.svelte";
   import OfflineIndicator from "$lib/components/OfflineIndicator.svelte";
-  import { Menu } from "lucide-svelte";
+  import MobileBottomNav from "$lib/components/MobileBottomNav.svelte";
 
   let { children } = $props();
   let paletteOpen = $state(false);
@@ -119,6 +121,23 @@
     drawerOpen = false;
   });
 
+  // ── Create page (for mobile bottom nav) ───────────────────────────────────
+  const qc = useQueryClient();
+  const createPage = createMutation(() => ({
+    mutationFn: createPageFn,
+    onSuccess: async (newPage) => {
+      if ($currentWorkspaceId) {
+        await qc.invalidateQueries({ queryKey: pagesKey($currentWorkspaceId) });
+      }
+      goto(`/app/${newPage.id}`);
+    },
+  }));
+
+  function handleNewPage() {
+    if (!$currentWorkspaceId) return;
+    createPage.mutate({ title: "Untitled", workspaceId: $currentWorkspaceId });
+  }
+
   function handleGlobalKeydown(e: KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key === "k") {
       e.preventDefault();
@@ -174,50 +193,17 @@
 
     <!-- Main area -->
     <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
-      <!-- Mobile top bar (hamburger + page title) — hidden on desktop -->
-      <div class="flex items-center gap-2 h-12 px-4 border-b border-border shrink-0 md:hidden bg-background">
-        <!-- Hamburger with tooltip -->
-        <div class="relative group shrink-0">
-          <button
-            onclick={() => (drawerOpen = !drawerOpen)}
-            class="p-1.5 -ml-1.5 rounded-md text-muted-foreground hover:text-foreground
-                   hover:bg-accent transition-colors"
-            aria-label="Toggle sidebar"
-            aria-expanded={drawerOpen}
-          >
-            <Menu class="w-5 h-5" />
-          </button>
-          <div
-            class="pointer-events-none absolute left-0 top-full mt-2 z-50
-                   opacity-0 group-hover:opacity-100 transition-opacity duration-150
-                   flex items-center gap-1.5 whitespace-nowrap
-                   rounded-md bg-popover text-popover-foreground
-                   border border-border shadow-md px-2.5 py-1.5 text-xs"
-          >
-            Toggle sidebar
-            <kbd class="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground">⌘\</kbd>
-          </div>
-        </div>
-
-        <!-- Current page breadcrumb -->
-        {#if $currentPageMeta}
-          <div class="flex items-center gap-1.5 min-w-0">
-            {#if $currentPageMeta.icon}
-              <span class="text-base leading-none shrink-0">{$currentPageMeta.icon}</span>
-            {/if}
-            <span class="truncate text-sm font-medium text-foreground">
-              {$currentPageMeta.title || "Untitled"}
-            </span>
-          </div>
-        {:else}
-          <span class="text-sm font-medium text-muted-foreground">My workspace</span>
-        {/if}
-      </div>
-
-      <main class="flex-1 overflow-y-auto">
+      <main class="flex-1 overflow-y-auto pb-24 md:pb-0">
         {@render children()}
       </main>
     </div>
+
+    <!-- Floating bottom nav — mobile only -->
+    <MobileBottomNav
+      onOpenMenu={() => (drawerOpen = true)}
+      onOpenSearch={() => (paletteOpen = true)}
+      onNewPage={handleNewPage}
+    />
 
     <CommandPalette bind:open={paletteOpen} />
   {:else}
