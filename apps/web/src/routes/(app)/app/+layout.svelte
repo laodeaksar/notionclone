@@ -4,6 +4,7 @@
   import { authClient, useSession } from "$lib/auth-client.js";
   import { userStore, type User } from "$lib/stores/user.js";
   import { isOnline } from "$lib/stores/network.js";
+  import { currentPageMeta } from "$lib/stores/page.js";
   import { currentWorkspaceId } from "$lib/stores/workspace.js";
   import { createPageFn, pagesKey } from "$lib/queries.js";
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
@@ -203,6 +204,7 @@
       onOpenMenu={() => (drawerOpen = true)}
       onOpenSearch={() => (paletteOpen = true)}
       onNewPage={handleNewPage}
+      pageMeta={$currentPageMeta}
     />
 
     <CommandPalette bind:open={paletteOpen} />
