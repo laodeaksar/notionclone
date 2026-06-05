@@ -22,6 +22,7 @@
   import ImageResizeHandles from "./editor/ImageResizeHandles.svelte";
   import BlockContextMenu from "./editor/BlockContextMenu.svelte";
   import SlashMenu from "./editor/SlashMenu.svelte";
+  import FloatingToolbar from "./editor/FloatingToolbar.svelte";
   import VersionHistory from "./VersionHistory.svelte";
   import CommentBubble from "./editor/CommentBubble.svelte";
   import CommentPanel from "./editor/CommentPanel.svelte";
@@ -498,6 +499,7 @@
 />
 
 <SlashMenu {slash} />
+<FloatingToolbar {editor} />
 
 <VersionHistory
   pageId={page.id}

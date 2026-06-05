@@ -6,6 +6,7 @@ import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import Typography from "@tiptap/extension-typography";
 import TextAlign from "@tiptap/extension-text-align";
+import Link from "@tiptap/extension-link";
 import { FileHandler } from "@tiptap/extension-file-handler";
 import { Suggestion } from "@tiptap/suggestion";
 import { writable, get } from "svelte/store";
@@ -733,6 +734,7 @@ export function createEditor({
         emDash: false,
       }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
+      Link.configure({ openOnClick: false, HTMLAttributes: { rel: "noopener noreferrer" } }),
       CommentMark,
       SlashMenuExtension,
       FileHandler.configure({

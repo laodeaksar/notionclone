@@ -1,0 +1,284 @@
+<script lang="ts">
+  import type { Editor } from "@tiptap/core";
+  import {
+    Bold, Italic, Strikethrough, Code, Quote,
+    Link, AlignLeft, AlignCenter, AlignRight, Unlink,
+  } from "lucide-svelte";
+
+  let { editor }: { editor: Editor | null } = $props();
+
+  type ToolbarCoords = { left: number; bottom: number };
+
+  let coords = $state<ToolbarCoords | null>(null);
+  let linkMode = $state(false);
+  let linkValue = $state("");
+  let linkInputEl = $state<HTMLInputElement | null>(null);
+
+  let isBold = $state(false);
+  let isItalic = $state(false);
+  let isStrike = $state(false);
+  let isCode = $state(false);
+  let isBlockquote = $state(false);
+  let isLink = $state(false);
+  let currentLink = $state("");
+
+  const TOOLBAR_HEIGHT = 44;
+  const TOOLBAR_WIDTH = 360;
+  const GAP = 8;
+
+  function recalcPosition() {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+      coords = null;
+      linkMode = false;
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    if (!rect || rect.width === 0) { coords = null; return; }
+
+    const vv = window.visualViewport;
+    const vvHeight = vv ? vv.height : window.innerHeight;
+    const vvOffsetTop = vv ? vv.offsetTop : 0;
+    const layoutHeight = window.innerHeight;
+
+    const spaceAbove = rect.top - vvOffsetTop;
+    const spaceBelow = vvHeight - (rect.bottom - vvOffsetTop);
+    let bottom: number;
+
+    if (spaceAbove >= TOOLBAR_HEIGHT + GAP || spaceAbove >= spaceBelow) {
+      bottom = layoutHeight - rect.top + GAP - vvOffsetTop + (layoutHeight - vvHeight - vvOffsetTop);
+    } else {
+      bottom = layoutHeight - rect.bottom - GAP - TOOLBAR_HEIGHT - vvOffsetTop + (layoutHeight - vvHeight - vvOffsetTop);
+    }
+
+    const viewportWidth = window.innerWidth;
+    let left = rect.left + rect.width / 2 - TOOLBAR_WIDTH / 2;
+    left = Math.max(8, Math.min(left, viewportWidth - TOOLBAR_WIDTH - 8));
+
+    coords = { left, bottom };
+  }
+
+  function updateMarks() {
+    if (!editor) return;
+    isBold = editor.isActive("bold");
+    isItalic = editor.isActive("italic");
+    isStrike = editor.isActive("strike");
+    isCode = editor.isActive("code");
+    isBlockquote = editor.isActive("blockquote");
+    isLink = editor.isActive("link");
+    currentLink = editor.getAttributes("link").href ?? "";
+  }
+
+  function onSelectionChange() {
+    if (!editor) return;
+    const { selection } = editor.state;
+    if (selection.empty) {
+      coords = null;
+      linkMode = false;
+      return;
+    }
+    const ns = selection as unknown as { node?: { type: { name: string } } };
+    if (ns.node?.type.name === "image") { coords = null; return; }
+    recalcPosition();
+    updateMarks();
+  }
+
+  $effect(() => {
+    if (!editor) return;
+    editor.on("selectionUpdate", onSelectionChange);
+    editor.on("transaction", onSelectionChange);
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener("resize", recalcPosition);
+      vv.addEventListener("scroll", recalcPosition);
+    }
+    return () => {
+      editor.off("selectionUpdate", onSelectionChange);
+      editor.off("transaction", onSelectionChange);
+      if (vv) {
+        vv.removeEventListener("resize", recalcPosition);
+        vv.removeEventListener("scroll", recalcPosition);
+      }
+    };
+  });
+
+  function applyBold() { editor?.chain().focus().toggleBold().run(); updateMarks(); }
+  function applyItalic() { editor?.chain().focus().toggleItalic().run(); updateMarks(); }
+  function applyStrike() { editor?.chain().focus().toggleStrike().run(); updateMarks(); }
+  function applyCode() { editor?.chain().focus().toggleCode().run(); updateMarks(); }
+  function applyBlockquote() { editor?.chain().focus().toggleBlockquote().run(); updateMarks(); }
+
+  function openLinkMode() {
+    linkValue = currentLink;
+    linkMode = true;
+    setTimeout(() => linkInputEl?.focus(), 10);
+  }
+
+  function applyLink() {
+    if (!editor) return;
+    const href = linkValue.trim();
+    if (!href) {
+      editor.chain().focus().unsetLink().run();
+    } else {
+      const url = href.startsWith("http") ? href : `https://${href}`;
+      editor.chain().focus().setLink({ href: url, target: "_blank" }).run();
+    }
+    linkMode = false;
+    linkValue = "";
+    updateMarks();
+  }
+
+  function removeLink() {
+    editor?.chain().focus().unsetLink().run();
+    linkMode = false;
+    updateMarks();
+  }
+
+  function handleLinkKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter") { e.preventDefault(); applyLink(); }
+    if (e.key === "Escape") { linkMode = false; editor?.commands.focus(); }
+  }
+</script>
+
+{#if coords}
+  <div
+    class="floating-toolbar fixed z-40 flex items-center gap-0.5 rounded-lg border border-border bg-popover shadow-xl px-1.5 py-1"
+    style="left:{coords.left}px; bottom:{coords.bottom}px; height:{TOOLBAR_HEIGHT}px;"
+    onmousedown={(e) => e.preventDefault()}
+  >
+    {#if linkMode}
+      <div class="flex items-center gap-1.5 px-1 w-full">
+        <Link class="w-3.5 h-3.5 shrink-0 text-muted-foreground" strokeWidth={2} />
+        <input
+          bind:this={linkInputEl}
+          bind:value={linkValue}
+          onkeydown={handleLinkKeydown}
+          type="url"
+          placeholder="https://..."
+          class="flex-1 min-w-0 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
+        />
+        <button
+          onclick={applyLink}
+          class="shrink-0 text-xs font-medium px-2 py-0.5 rounded bg-foreground text-background hover:opacity-80 transition-opacity"
+        >Apply</button>
+        {#if isLink}
+          <button
+            onclick={removeLink}
+            class="shrink-0 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-accent transition-colors"
+            title="Remove link"
+          >
+            <Unlink class="w-3.5 h-3.5" strokeWidth={2} />
+          </button>
+        {/if}
+      </div>
+    {:else}
+      <button
+        onclick={applyBold}
+        class="toolbar-btn"
+        class:active={isBold}
+        title="Bold (⌘B)"
+      >
+        <Bold class="w-3.5 h-3.5" strokeWidth={isBold ? 3 : 2} />
+      </button>
+
+      <button
+        onclick={applyItalic}
+        class="toolbar-btn"
+        class:active={isItalic}
+        title="Italic (⌘I)"
+      >
+        <Italic class="w-3.5 h-3.5" strokeWidth={2} />
+      </button>
+
+      <button
+        onclick={applyStrike}
+        class="toolbar-btn"
+        class:active={isStrike}
+        title="Strikethrough"
+      >
+        <Strikethrough class="w-3.5 h-3.5" strokeWidth={2} />
+      </button>
+
+      <button
+        onclick={applyCode}
+        class="toolbar-btn"
+        class:active={isCode}
+        title="Inline Code"
+      >
+        <Code class="w-3.5 h-3.5" strokeWidth={2} />
+      </button>
+
+      <div class="w-px h-5 bg-border mx-0.5 shrink-0"></div>
+
+      <button
+        onclick={openLinkMode}
+        class="toolbar-btn"
+        class:active={isLink}
+        title="Link"
+      >
+        <Link class="w-3.5 h-3.5" strokeWidth={2} />
+      </button>
+
+      <button
+        onclick={applyBlockquote}
+        class="toolbar-btn"
+        class:active={isBlockquote}
+        title="Blockquote"
+      >
+        <Quote class="w-3.5 h-3.5" strokeWidth={2} />
+      </button>
+
+      <div class="w-px h-5 bg-border mx-0.5 shrink-0"></div>
+
+      <button
+        onclick={() => editor?.chain().focus().setTextAlign("left").run()}
+        class="toolbar-btn"
+        class:active={editor?.isActive({ textAlign: "left" })}
+        title="Align left"
+      >
+        <AlignLeft class="w-3.5 h-3.5" strokeWidth={2} />
+      </button>
+
+      <button
+        onclick={() => editor?.chain().focus().setTextAlign("center").run()}
+        class="toolbar-btn"
+        class:active={editor?.isActive({ textAlign: "center" })}
+        title="Align center"
+      >
+        <AlignCenter class="w-3.5 h-3.5" strokeWidth={2} />
+      </button>
+
+      <button
+        onclick={() => editor?.chain().focus().setTextAlign("right").run()}
+        class="toolbar-btn"
+        class:active={editor?.isActive({ textAlign: "right" })}
+        title="Align right"
+      >
+        <AlignRight class="w-3.5 h-3.5" strokeWidth={2} />
+      </button>
+    {/if}
+  </div>
+{/if}
+
+<style>
+  .toolbar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.375rem;
+    color: hsl(var(--muted-foreground));
+    transition: background-color 0.1s, color 0.1s;
+    flex-shrink: 0;
+  }
+  .toolbar-btn:hover {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--foreground));
+  }
+  .toolbar-btn.active {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--foreground));
+  }
+</style>

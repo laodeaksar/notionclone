@@ -398,4 +398,14 @@
   :global(.ProseMirror .comment-mark:hover) {
     background-color: rgba(253, 224, 71, 0.55);
   }
+  :global(.ProseMirror a) {
+    color: hsl(217, 91%, 60%);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  :global(.ProseMirror a:hover) {
+    color: hsl(217, 91%, 50%);
+  }
 </style>
