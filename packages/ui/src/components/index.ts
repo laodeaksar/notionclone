@@ -1,5 +1,6 @@
 export * as Button from "./button/index.js";
 export * as Input from "./input/index.js";
+export * as InputGroup from "./input-group/index.js";
 export * as Label from "./label/index.js";
 export * as Textarea from "./textarea/index.js";
 export * as Badge from "./badge/index.js";
