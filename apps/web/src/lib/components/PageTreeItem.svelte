@@ -154,6 +154,7 @@
 
 <div
   class="relative"
+  role="listitem"
   draggable={!drag.isFiltering}
   ondragstart={handleDragStart}
   ondragover={handleDragOver}

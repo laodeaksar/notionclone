@@ -336,6 +336,12 @@
     editor?.chain().focus().updateAttributes("image", { align }).run();
   }
 
+  function deleteImage() {
+    editor?.chain().focus().deleteSelection().run();
+    imageSelected = false;
+    imageBubble = null;
+  }
+
   // ── Version save ──────────────────────────────────────────────────────────
   async function handleSaveVersion() {
     if (!editor) return;
@@ -469,6 +475,7 @@
   visible={imageSelected}
   position={imageBubble}
   onAlign={setImageAlign}
+  onDelete={deleteImage}
 />
 
 <BlockContextMenu
