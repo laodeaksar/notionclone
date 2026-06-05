@@ -562,7 +562,7 @@ const SlashMenuExtension = Extension.create({
                 items: localItems,
                 selectedIndex: 0,
                 coords: rect
-                  ? { left: rect.left, top: rect.bottom + 6 }
+                  ? { left: rect.left, top: rect.top }
                   : null,
                 executeCommand: (item) => localCommand?.(item),
               });
@@ -578,7 +578,7 @@ const SlashMenuExtension = Extension.create({
                 items: localItems,
                 selectedIndex: 0,
                 coords: rect
-                  ? { left: rect.left, top: rect.bottom + 6 }
+                  ? { left: rect.left, top: rect.top }
                   : s.coords,
                 executeCommand: (item) => localCommand?.(item),
               }));

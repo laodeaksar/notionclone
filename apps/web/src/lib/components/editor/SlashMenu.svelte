@@ -33,12 +33,47 @@
     slash.executeCommand?.(item);
     slashMenuStore.update((s) => ({ ...s, open: false }));
   }
+
+  let bottomPx = $state(0);
+  let leftPx = $state(0);
+
+  function recalc() {
+    if (!slash.coords) return;
+    const vv = window.visualViewport;
+    const vvHeight = vv ? vv.height : window.innerHeight;
+    const vvOffsetTop = vv ? vv.offsetTop : 0;
+    const layoutHeight = window.innerHeight;
+    const caretTop = slash.coords.top;
+    bottomPx = layoutHeight - caretTop + 8 - vvOffsetTop + (layoutHeight - vvHeight - vvOffsetTop);
+    leftPx = slash.coords.left;
+  }
+
+  $effect(() => {
+    if (!slash.open || !slash.coords) return;
+
+    recalc();
+
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener("resize", recalc);
+      vv.addEventListener("scroll", recalc);
+    }
+    window.addEventListener("resize", recalc);
+
+    return () => {
+      if (vv) {
+        vv.removeEventListener("resize", recalc);
+        vv.removeEventListener("scroll", recalc);
+      }
+      window.removeEventListener("resize", recalc);
+    };
+  });
 </script>
 
 {#if slash.open && slash.coords && slash.items.length > 0}
   <div
     class="slash-menu fixed z-50 w-72 rounded-lg border border-border bg-popover shadow-xl overflow-hidden"
-    style="left:{slash.coords.left}px;top:{slash.coords.top}px;"
+    style="left:{leftPx}px; bottom:{bottomPx}px;"
   >
     <div class="px-3 py-2 border-b border-border">
       <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Blocks</p>
