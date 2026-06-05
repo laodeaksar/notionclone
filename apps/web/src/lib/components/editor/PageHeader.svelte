@@ -26,8 +26,10 @@
   </div>
 {/if}
 
-<div class="mb-4">
-  <FileText class="w-12 h-12 text-muted-foreground" strokeWidth={1.5} />
+<div class="mb-4 group/header">
+  <div class="opacity-0 group-hover/header:opacity-100 transition-opacity">
+    <FileText class="w-12 h-12 text-muted-foreground" strokeWidth={1.5} />
+  </div>
 </div>
 
 <input
