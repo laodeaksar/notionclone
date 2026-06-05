@@ -324,6 +324,24 @@ export const CustomImage = Image.extend({
 // ── Custom Blockquote with author attribution ─────────────────────────────────
 
 export const CustomBlockquote = Blockquote.extend({
+  addKeyboardShortcuts() {
+    return {
+      ...this.parent?.(),
+      Enter: ({ editor }) => {
+        const { $from } = editor.state.selection;
+        let insideBlockquote = false;
+        for (let d = $from.depth; d > 0; d--) {
+          if ($from.node(d).type.name === "blockquote") {
+            insideBlockquote = true;
+            break;
+          }
+        }
+        if (!insideBlockquote) return false;
+        return editor.commands.splitBlock();
+      },
+    };
+  },
+
   addAttributes() {
     return {
       ...this.parent?.(),
