@@ -151,6 +151,18 @@
     linkMode = false;
     onComment?.();
   }
+
+  $effect(() => {
+    function handleGlobalKeydown(e: KeyboardEvent) {
+      const isMod = e.metaKey || e.ctrlKey;
+      if (isMod && e.key === "k" && coords && !linkMode) {
+        e.preventDefault();
+        openLinkMode();
+      }
+    }
+    document.addEventListener("keydown", handleGlobalKeydown);
+    return () => document.removeEventListener("keydown", handleGlobalKeydown);
+  });
 </script>
 
 {#if coords}
@@ -200,7 +212,7 @@
 
       <div class="w-px h-5 bg-border mx-0.5 shrink-0"></div>
 
-      <button onclick={openLinkMode} class="toolbar-btn" class:active={isLink} title="Link (⌘K)">
+      <button onclick={openLinkMode} class="toolbar-btn" class:active={isLink} title="Link — ⌘K">
         <Link class="w-3.5 h-3.5" strokeWidth={2} />
       </button>
       <button onclick={applyBlockquote} class="toolbar-btn" class:active={isBlockquote} title="Blockquote">
