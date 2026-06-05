@@ -331,6 +331,55 @@
   :global(.ProseMirror figure.blockquote-figure cite:empty:focus::before) {
     opacity: 0.5;
   }
+  /* ── Callout blocks ──────────────────────────────────────── */
+  :global(.ProseMirror .callout) {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin: 0.5rem 0;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: hsl(var(--muted) / 0.5);
+  }
+  :global(.ProseMirror .callout--info) {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: rgba(59, 130, 246, 0.25);
+  }
+  :global(.ProseMirror .callout--warning) {
+    background: rgba(234, 179, 8, 0.1);
+    border-color: rgba(234, 179, 8, 0.3);
+  }
+  :global(.ProseMirror .callout--success) {
+    background: rgba(34, 197, 94, 0.08);
+    border-color: rgba(34, 197, 94, 0.25);
+  }
+  :global(.ProseMirror .callout--error) {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.25);
+  }
+  :global(.ProseMirror .callout__icon) {
+    flex-shrink: 0;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    cursor: text;
+    outline: none;
+    border-radius: 0.25rem;
+    padding: 0 0.15rem;
+    min-width: 1.4rem;
+    text-align: center;
+    transition: background-color 0.1s;
+  }
+  :global(.ProseMirror .callout__icon:focus) {
+    background: hsl(var(--muted));
+  }
+  :global(.ProseMirror .callout__content) {
+    flex: 1;
+    min-width: 0;
+  }
+  :global(.ProseMirror .callout__content > p:first-child) { margin-top: 0; }
+  :global(.ProseMirror .callout__content > p:last-child)  { margin-bottom: 0; }
+
   :global(.ProseMirror h1) { font-size: 1.875rem; font-weight: 700; margin: 1.5rem 0 0.5rem; line-height: 1.2; }
   :global(.ProseMirror h2) { font-size: 1.5rem;   font-weight: 600; margin: 1.25rem 0 0.4rem; line-height: 1.3; }
   :global(.ProseMirror h3) { font-size: 1.25rem;  font-weight: 600; margin: 1rem 0 0.3rem; line-height: 1.4; }

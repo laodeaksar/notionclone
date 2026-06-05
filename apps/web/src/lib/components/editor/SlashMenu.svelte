@@ -25,6 +25,10 @@
     "minus": Minus,
   };
 
+  function getEmoji(icon: string): string | null {
+    return icon.startsWith("emoji:") ? icon.slice(6) : null;
+  }
+
   function execSlash(item: typeof slash.items[number]) {
     slash.executeCommand?.(item);
     slashMenuStore.update((s) => ({ ...s, open: false }));
@@ -42,6 +46,7 @@
     <div class="max-h-64 overflow-y-auto p-1">
       {#each slash.items as item, i (item.title)}
         {@const Icon = iconMap[item.icon]}
+        {@const emoji = getEmoji(item.icon)}
         <button
           onclick={() => execSlash(item)}
           class="flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm text-left transition-colors"
@@ -51,7 +56,9 @@
           class:hover:bg-accent={i !== slash.selectedIndex}
         >
           <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-background text-muted-foreground">
-            {#if Icon}
+            {#if emoji}
+              <span class="text-base leading-none">{emoji}</span>
+            {:else if Icon}
               <Icon class="w-4 h-4" strokeWidth={1.75} />
             {/if}
           </div>

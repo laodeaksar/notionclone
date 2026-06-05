@@ -1,4 +1,4 @@
-import { Editor, Extension, Mark, mergeAttributes } from "@tiptap/core";
+import { Editor, Extension, Mark, Node, mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Blockquote from "@tiptap/extension-blockquote";
 import Image from "@tiptap/extension-image";
@@ -81,6 +81,50 @@ export const SLASH_ITEMS: SlashItem[] = [
     icon: "minus",
     shortcut: "---",
     command: (e) => e.chain().focus().setHorizontalRule().run(),
+  },
+  {
+    title: "Callout",
+    description: "Highlighted note block",
+    icon: "emoji:💡",
+    command: (e) =>
+      e.chain().focus().insertContent({
+        type: "callout",
+        attrs: { variant: "default" },
+        content: [{ type: "paragraph" }],
+      }).run(),
+  },
+  {
+    title: "Info",
+    description: "Informational callout",
+    icon: "emoji:ℹ️",
+    command: (e) =>
+      e.chain().focus().insertContent({
+        type: "callout",
+        attrs: { variant: "info" },
+        content: [{ type: "paragraph" }],
+      }).run(),
+  },
+  {
+    title: "Warning",
+    description: "Warning callout",
+    icon: "emoji:⚠️",
+    command: (e) =>
+      e.chain().focus().insertContent({
+        type: "callout",
+        attrs: { variant: "warning" },
+        content: [{ type: "paragraph" }],
+      }).run(),
+  },
+  {
+    title: "Success",
+    description: "Success callout",
+    icon: "emoji:✅",
+    command: (e) =>
+      e.chain().focus().insertContent({
+        type: "callout",
+        attrs: { variant: "success" },
+        content: [{ type: "paragraph" }],
+      }).run(),
   },
 ];
 
@@ -352,6 +396,118 @@ export const CustomBlockquote = Blockquote.extend({
   },
 });
 
+// ── Callout block ─────────────────────────────────────────────────────────────
+
+const CALLOUT_DEFAULTS: Record<string, string> = {
+  default: "💡",
+  info:    "ℹ️",
+  warning: "⚠️",
+  success: "✅",
+  error:   "🚨",
+};
+
+export const CalloutExtension = Node.create({
+  name: "callout",
+  group: "block",
+  content: "block+",
+  defining: true,
+
+  addAttributes() {
+    return {
+      variant: {
+        default: "default",
+        parseHTML: (el) => el.getAttribute("data-callout-variant") ?? "default",
+        renderHTML: (attrs) => ({ "data-callout-variant": attrs.variant }),
+      },
+      icon: {
+        default: null,
+        parseHTML: (el) => el.getAttribute("data-callout-icon") ?? null,
+        renderHTML: (attrs) =>
+          attrs.icon ? { "data-callout-icon": attrs.icon as string } : {},
+      },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: "div[data-callout-variant]" }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ["div", mergeAttributes({ class: "callout" }, HTMLAttributes), 0];
+  },
+
+  addNodeView() {
+    return ({ node, getPos, editor: ed }) => {
+      let currentAttrs = { ...node.attrs };
+
+      const wrapper = document.createElement("div");
+      wrapper.className = `callout callout--${currentAttrs.variant ?? "default"}`;
+
+      const iconEl = document.createElement("span");
+      iconEl.contentEditable = "true";
+      iconEl.className = "callout__icon";
+      iconEl.title = "Click to change emoji";
+      const resolvedIcon =
+        (currentAttrs.icon as string | null) ||
+        CALLOUT_DEFAULTS[(currentAttrs.variant as string) ?? "default"] ||
+        "💡";
+      iconEl.textContent = resolvedIcon;
+
+      const contentEl = document.createElement("div");
+      contentEl.className = "callout__content";
+
+      wrapper.appendChild(iconEl);
+      wrapper.appendChild(contentEl);
+
+      iconEl.addEventListener("input", () => {
+        const pos = typeof getPos === "function" ? getPos() : undefined;
+        if (pos === undefined) return;
+        const { tr } = ed.state;
+        tr.setNodeMarkup(pos, undefined, {
+          ...currentAttrs,
+          icon: iconEl.textContent ?? "",
+        });
+        ed.view.dispatch(tr);
+      });
+
+      iconEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === "Escape") {
+          iconEl.blur();
+          e.preventDefault();
+        }
+        e.stopPropagation();
+      });
+
+      return {
+        dom: wrapper,
+        contentDOM: contentEl,
+
+        update(updatedNode) {
+          if (updatedNode.type.name !== "callout") return false;
+          currentAttrs = { ...updatedNode.attrs };
+          const v = (currentAttrs.variant as string) ?? "default";
+          wrapper.className = `callout callout--${v}`;
+          if (!iconEl.matches(":focus")) {
+            iconEl.textContent =
+              (currentAttrs.icon as string | null) ||
+              CALLOUT_DEFAULTS[v] ||
+              "💡";
+          }
+          return true;
+        },
+
+        stopEvent(event) {
+          return iconEl.contains(event.target as Node);
+        },
+
+        ignoreMutation(mutation) {
+          return iconEl.contains(mutation.target as Node);
+        },
+      };
+    };
+  },
+});
+
 // ── Slash command Extension ───────────────────────────────────────────────────
 
 const SlashMenuExtension = Extension.create({
@@ -513,6 +669,7 @@ export function createEditor({
       StarterKit.configure({ blockquote: false }),
       CustomBlockquote,
       CustomImage.configure({ allowBase64: true }),
+      CalloutExtension,
       Placeholder.configure({ placeholder }),
       Typography.configure({
         // Disable em-dash so "---" fires the horizontal-rule input rule
