@@ -16,6 +16,7 @@
   let { children } = $props();
   let paletteOpen = $state(false);
   let drawerOpen = $state(false);
+  let mainEl = $state<HTMLElement | null>(null);
 
   // ── Swipe gesture ──────────────────────────────────────────────────────────
   const EDGE_ZONE   = 24;   // px from left edge that starts an open-swipe
@@ -194,7 +195,7 @@
 
     <!-- Main area -->
     <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
-      <main class="flex-1 overflow-y-auto pb-24 md:pb-0">
+      <main bind:this={mainEl} class="flex-1 overflow-y-auto pb-24 md:pb-0">
         {@render children()}
       </main>
     </div>
@@ -205,6 +206,7 @@
       onOpenSearch={() => (paletteOpen = true)}
       onNewPage={handleNewPage}
       pageMeta={$currentPageMeta}
+      onScrollTop={() => mainEl?.scrollTo({ top: 0, behavior: "smooth" })}
     />
 
     <CommandPalette bind:open={paletteOpen} />

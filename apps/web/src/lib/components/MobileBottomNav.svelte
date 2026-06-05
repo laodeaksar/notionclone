@@ -1,27 +1,57 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { Home, Search, FilePlus, Menu } from "lucide-svelte";
+  import { Home, Search, FilePlus, Menu, ChevronsUp } from "lucide-svelte";
 
   let {
     onOpenMenu,
     onOpenSearch,
     onNewPage,
+    onScrollTop,
     pageMeta = null,
   }: {
     onOpenMenu: () => void;
     onOpenSearch: () => void;
     onNewPage: () => void;
+    onScrollTop?: () => void;
     pageMeta?: { title: string; icon: string | null } | null;
   } = $props();
+
+  // ── Swipe-up gesture ───────────────────────────────────────────────────────
+  const SWIPE_THRESHOLD = 40; // minimum px upward to trigger
+
+  let touchStartY = 0;
+  let touchStartX = 0;
+  let triggered = $state(false);
+
+  function onNavTouchStart(e: TouchEvent) {
+    touchStartY = e.touches[0].clientY;
+    touchStartX = e.touches[0].clientX;
+    triggered = false;
+  }
+
+  function onNavTouchEnd(e: TouchEvent) {
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    // Only fire if swipe is clearly upward and not a horizontal swipe
+    if (dy < -SWIPE_THRESHOLD && Math.abs(dy) > Math.abs(dx)) {
+      triggered = true;
+      onScrollTop?.();
+      // Brief flash to confirm gesture, then reset
+      setTimeout(() => (triggered = false), 600);
+    }
+  }
 </script>
 
 <nav
   class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 md:hidden
          flex flex-col
          bg-background/80 backdrop-blur-md
-         border border-border shadow-lg rounded-2xl
-         overflow-hidden"
+         border border-border rounded-2xl
+         overflow-hidden transition-shadow duration-200
+         {triggered ? 'shadow-xl shadow-primary/20' : 'shadow-lg'}"
   aria-label="Mobile navigation"
+  ontouchstart={onNavTouchStart}
+  ontouchend={onNavTouchEnd}
 >
   <!-- Page title strip — only visible when a page is open -->
   {#if pageMeta}
@@ -33,7 +63,16 @@
       {#if pageMeta.icon}
         <span class="text-base leading-none shrink-0">{pageMeta.icon}</span>
       {/if}
-      <span class="truncate">{pageMeta.title || "Untitled"}</span>
+      <span class="truncate flex-1">{pageMeta.title || "Untitled"}</span>
+
+      <!-- Scroll-to-top hint icon -->
+      {#if onScrollTop}
+        <ChevronsUp
+          class="w-3.5 h-3.5 shrink-0 text-muted-foreground/60
+                 transition-colors duration-200
+                 {triggered ? 'text-primary' : ''}"
+        />
+      {/if}
     </div>
   {/if}
 
