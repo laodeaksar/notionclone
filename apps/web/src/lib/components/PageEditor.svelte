@@ -65,6 +65,8 @@
   let ctxY = $state(0);
   let ctxBlockPos = $state<number | null>(null);
 
+  let openCommentForm = $state<(() => void) | undefined>(undefined);
+
   let slash = $derived($slashMenuStore);
 
   // ── Draft state ────────────────────────────────────────────────────────────
@@ -499,7 +501,7 @@
 />
 
 <SlashMenu {slash} />
-<FloatingToolbar {editor} />
+<FloatingToolbar {editor} onComment={openCommentForm} />
 
 <VersionHistory
   pageId={page.id}
@@ -512,6 +514,7 @@
   pageId={page.id}
   workspaceId={page.workspaceId}
   onCommentCreated={handleCommentCreated}
+  bind:openForm={openCommentForm}
 />
 
 <CommentPanel

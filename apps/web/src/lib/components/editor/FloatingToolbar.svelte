@@ -2,10 +2,16 @@
   import type { Editor } from "@tiptap/core";
   import {
     Bold, Italic, Strikethrough, Code, Quote,
-    Link, AlignLeft, AlignCenter, AlignRight, Unlink,
+    Link, AlignLeft, AlignCenter, AlignRight, Unlink, MessageSquare,
   } from "lucide-svelte";
 
-  let { editor }: { editor: Editor | null } = $props();
+  let {
+    editor,
+    onComment,
+  }: {
+    editor: Editor | null;
+    onComment?: () => void;
+  } = $props();
 
   type ToolbarCoords = { left: number; bottom: number };
 
@@ -23,7 +29,7 @@
   let currentLink = $state("");
 
   const TOOLBAR_HEIGHT = 44;
-  const TOOLBAR_WIDTH = 360;
+  const TOOLBAR_WIDTH_FULL = 400;
   const GAP = 8;
 
   function recalcPosition() {
@@ -53,8 +59,8 @@
     }
 
     const viewportWidth = window.innerWidth;
-    let left = rect.left + rect.width / 2 - TOOLBAR_WIDTH / 2;
-    left = Math.max(8, Math.min(left, viewportWidth - TOOLBAR_WIDTH - 8));
+    let left = rect.left + rect.width / 2 - TOOLBAR_WIDTH_FULL / 2;
+    left = Math.max(8, Math.min(left, viewportWidth - TOOLBAR_WIDTH_FULL - 8));
 
     coords = { left, bottom };
   }
@@ -139,6 +145,12 @@
     if (e.key === "Enter") { e.preventDefault(); applyLink(); }
     if (e.key === "Escape") { linkMode = false; editor?.commands.focus(); }
   }
+
+  function handleComment() {
+    coords = null;
+    linkMode = false;
+    onComment?.();
+  }
 </script>
 
 {#if coords}
@@ -173,59 +185,25 @@
         {/if}
       </div>
     {:else}
-      <button
-        onclick={applyBold}
-        class="toolbar-btn"
-        class:active={isBold}
-        title="Bold (⌘B)"
-      >
+      <button onclick={applyBold} class="toolbar-btn" class:active={isBold} title="Bold (⌘B)">
         <Bold class="w-3.5 h-3.5" strokeWidth={isBold ? 3 : 2} />
       </button>
-
-      <button
-        onclick={applyItalic}
-        class="toolbar-btn"
-        class:active={isItalic}
-        title="Italic (⌘I)"
-      >
+      <button onclick={applyItalic} class="toolbar-btn" class:active={isItalic} title="Italic (⌘I)">
         <Italic class="w-3.5 h-3.5" strokeWidth={2} />
       </button>
-
-      <button
-        onclick={applyStrike}
-        class="toolbar-btn"
-        class:active={isStrike}
-        title="Strikethrough"
-      >
+      <button onclick={applyStrike} class="toolbar-btn" class:active={isStrike} title="Strikethrough">
         <Strikethrough class="w-3.5 h-3.5" strokeWidth={2} />
       </button>
-
-      <button
-        onclick={applyCode}
-        class="toolbar-btn"
-        class:active={isCode}
-        title="Inline Code"
-      >
+      <button onclick={applyCode} class="toolbar-btn" class:active={isCode} title="Inline Code">
         <Code class="w-3.5 h-3.5" strokeWidth={2} />
       </button>
 
       <div class="w-px h-5 bg-border mx-0.5 shrink-0"></div>
 
-      <button
-        onclick={openLinkMode}
-        class="toolbar-btn"
-        class:active={isLink}
-        title="Link"
-      >
+      <button onclick={openLinkMode} class="toolbar-btn" class:active={isLink} title="Link (⌘K)">
         <Link class="w-3.5 h-3.5" strokeWidth={2} />
       </button>
-
-      <button
-        onclick={applyBlockquote}
-        class="toolbar-btn"
-        class:active={isBlockquote}
-        title="Blockquote"
-      >
+      <button onclick={applyBlockquote} class="toolbar-btn" class:active={isBlockquote} title="Blockquote">
         <Quote class="w-3.5 h-3.5" strokeWidth={2} />
       </button>
 
@@ -239,7 +217,6 @@
       >
         <AlignLeft class="w-3.5 h-3.5" strokeWidth={2} />
       </button>
-
       <button
         onclick={() => editor?.chain().focus().setTextAlign("center").run()}
         class="toolbar-btn"
@@ -248,7 +225,6 @@
       >
         <AlignCenter class="w-3.5 h-3.5" strokeWidth={2} />
       </button>
-
       <button
         onclick={() => editor?.chain().focus().setTextAlign("right").run()}
         class="toolbar-btn"
@@ -257,6 +233,17 @@
       >
         <AlignRight class="w-3.5 h-3.5" strokeWidth={2} />
       </button>
+
+      {#if onComment}
+        <div class="w-px h-5 bg-border mx-0.5 shrink-0"></div>
+        <button
+          onclick={handleComment}
+          class="toolbar-btn"
+          title="Add comment"
+        >
+          <MessageSquare class="w-3.5 h-3.5" strokeWidth={2} />
+        </button>
+      {/if}
     {/if}
   </div>
 {/if}

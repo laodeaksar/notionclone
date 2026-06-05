@@ -2,7 +2,7 @@
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import type { Editor } from "@tiptap/core";
   import { commentsKey, createCommentFn, type CommentThread } from "$lib/queries.js";
-  import { MessageSquare, Loader2 } from "lucide-svelte";
+  import { Loader2 } from "lucide-svelte";
   import MentionInput from "./MentionInput.svelte";
 
   let {
@@ -10,75 +10,35 @@
     pageId,
     workspaceId,
     onCommentCreated,
+    openForm: openFormBind = $bindable(undefined),
   }: {
     editor: Editor | null;
     pageId: string;
     workspaceId: string;
     onCommentCreated?: (c: CommentThread) => void;
+    openForm?: (() => void) | undefined;
   } = $props();
 
   const queryClient = useQueryClient();
 
-  let bubblePos = $state<{ left: number; top: number } | null>(null);
   let formOpen = $state(false);
   let commentText = $state("");
   let savedFrom = $state(0);
   let savedTo = $state(0);
   let savedQuote = $state("");
 
-  // Track whether the pointer is held down on the comment button so blur
-  // doesn't clear the bubble before the click registers.
-  let pointerOnButton = false;
+  function openForm() {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    savedFrom = from;
+    savedTo = to;
+    savedQuote = editor.state.doc.textBetween(from, to, " ").slice(0, 300);
+    formOpen = true;
+  }
 
+  // Expose openForm to parent via bindable prop
   $effect(() => {
-    // Use the native selectionchange event — it fires reliably regardless of
-    // how the editor emits its own events, and doesn't depend on timing with
-    // the editor initialization.
-    function checkSelection() {
-      if (formOpen) return;
-
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
-        bubblePos = null;
-        return;
-      }
-
-      const text = sel.toString().trim();
-      if (!text) { bubblePos = null; return; }
-
-      // Only show bubble when the selection is inside the editor.
-      if (!editor) { bubblePos = null; return; }
-      const editorDom = editor.view.dom;
-      const range = sel.getRangeAt(0);
-      if (!editorDom.contains(range.commonAncestorContainer)) {
-        bubblePos = null;
-        return;
-      }
-
-      try {
-        const rect = range.getBoundingClientRect();
-        if (!rect.width && !rect.height) { bubblePos = null; return; }
-        const midX = (rect.left + rect.right) / 2;
-        bubblePos = {
-          left: Math.max(8, Math.min(midX - 52, window.innerWidth - 116)),
-          top: Math.max(8, rect.top - 44),
-        };
-      } catch { bubblePos = null; }
-    }
-
-    // When the editor loses focus clear the bubble — but only if the pointer
-    // isn't currently held down on the comment button itself.
-    function handleBlur() {
-      if (!formOpen && !pointerOnButton) bubblePos = null;
-    }
-
-    document.addEventListener("selectionchange", checkSelection);
-    if (editor) editor.on("blur", handleBlur);
-
-    return () => {
-      document.removeEventListener("selectionchange", checkSelection);
-      if (editor) editor.off("blur", handleBlur);
-    };
+    openFormBind = openForm;
   });
 
   const createComment = createMutation(() => ({
@@ -95,19 +55,9 @@
       onCommentCreated?.(data!);
       commentText = "";
       formOpen = false;
-      bubblePos = null;
+      savedQuote = "";
     },
   }));
-
-  function openForm() {
-    if (!editor) return;
-    const { from, to } = editor.state.selection;
-    savedFrom = from;
-    savedTo = to;
-    savedQuote = editor.state.doc.textBetween(from, to, " ").slice(0, 300);
-    formOpen = true;
-    bubblePos = null;
-  }
 
   function submit() {
     if (!commentText.trim()) return;
@@ -117,26 +67,9 @@
   function cancel() {
     formOpen = false;
     commentText = "";
-    bubblePos = null;
     savedQuote = "";
   }
 </script>
-
-{#if bubblePos && !formOpen}
-  <button
-    style="position:fixed;left:{bubblePos.left}px;top:{bubblePos.top}px;z-index:50;"
-    onpointerdown={() => { pointerOnButton = true; }}
-    onpointerup={() => { pointerOnButton = false; openForm(); }}
-    onpointercancel={() => { pointerOnButton = false; }}
-    class="flex items-center gap-1.5 px-3 py-1.5 bg-foreground text-background
-           text-xs font-medium rounded-full shadow-lg hover:opacity-90 transition-opacity
-           select-none"
-    aria-label="Add comment"
-  >
-    <MessageSquare class="w-3 h-3" strokeWidth={2.5} />
-    Comment
-  </button>
-{/if}
 
 {#if formOpen}
   <div
