@@ -54,8 +54,10 @@
   $effect(() => {
     if (focusedCommentId) {
       highlightedId = focusedCommentId;
-      scrollToComment(focusedCommentId);
-      focusInEditor(focusedCommentId);
+      // Scroll comment into view in the panel and focus it so the user
+      // can immediately interact (reply, resolve, etc.) without the
+      // editor stealing focus back.
+      scrollToAndFocusComment(focusedCommentId);
     }
   });
 
@@ -79,6 +81,16 @@
   function scrollToComment(commentId: string) {
     const el = document.getElementById(`comment-${commentId}`);
     el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function scrollToAndFocusComment(commentId: string) {
+    const el = document.getElementById(`comment-${commentId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    // Short delay so the panel slide-in animation (200ms) has started
+    // before we move focus — prevents the browser from scrolling the
+    // whole page to reach an off-screen element.
+    setTimeout(() => el.focus({ preventScroll: true }), 50);
   }
 
   const resolveComment = createMutation(() => ({

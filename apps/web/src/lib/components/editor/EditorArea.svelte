@@ -141,7 +141,12 @@
       const markEl = target.closest("[data-comment-id]") as HTMLElement | null;
       if (markEl) {
         const commentId = markEl.getAttribute("data-comment-id");
-        if (commentId) onCommentClick?.(commentId);
+        if (commentId) {
+          onCommentClick?.(commentId);
+          // Blur the editor so the comment panel can receive focus.
+          // The panel's $effect will call el.focus() on the thread element.
+          editor?.commands.blur();
+        }
       }
     }}
     onkeydown={(e) => {
