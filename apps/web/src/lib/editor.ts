@@ -145,13 +145,27 @@ export const CustomImage = Image.extend({
             right: "display:block;margin-left:auto;margin-right:0;",
             "full-width": "display:block;width:100%;",
           };
+          const base = styleMap[attrs.align as string] ?? styleMap.center;
+          const widthStyle =
+            attrs.width && attrs.align !== "full-width"
+              ? `max-width:${attrs.width}px;width:${attrs.width}px;`
+              : "";
           return {
-            style: styleMap[attrs.align as string] ?? styleMap.center,
+            style: base + widthStyle,
             "data-align": attrs.align,
           };
         },
         parseHTML: (element) =>
           element.getAttribute("data-align") ?? "center",
+      },
+      width: {
+        default: null,
+        parseHTML: (el) => {
+          const v = el.getAttribute("data-width");
+          return v ? Number(v) : null;
+        },
+        renderHTML: (attrs) =>
+          attrs.width ? { "data-width": String(attrs.width) } : {},
       },
       // Identifies images queued for upload while offline.
       // Value: unique ID string while pending; "error:<id>" on permanent failure; null when synced.

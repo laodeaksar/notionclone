@@ -11,6 +11,7 @@
     editor = $bindable(null),
     imageSelected = $bindable(false),
     imageBubble = $bindable(null),
+    imageRect = $bindable(null),
     onOpenContextMenu,
     onCommentClick,
     onImageFile,
@@ -20,6 +21,7 @@
     editor?: Editor | null;
     imageSelected?: boolean;
     imageBubble?: { left: number; top: number } | null;
+    imageRect?: { left: number; top: number; width: number; height: number } | null;
     onOpenContextMenu?: (data: { x: number; y: number; blockPos: number | null }) => void;
     onCommentClick?: (commentId: string) => void;
     onImageFile?: (file: File) => Promise<ImageFileResult>;
@@ -45,16 +47,25 @@
             left: Math.max(4, rect.left + rect.width / 2 - 96),
             top: rect.bottom + 8,
           };
+          imageRect = {
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height,
+          };
         } else {
           const coords = editor.view.coordsAtPos(selection.from);
           imageBubble = { left: coords.left, top: coords.bottom + 8 };
+          imageRect = null;
         }
         imageSelected = true;
       } catch {
         imageSelected = false;
+        imageRect = null;
       }
     } else {
       imageSelected = false;
+      imageRect = null;
     }
   }
 

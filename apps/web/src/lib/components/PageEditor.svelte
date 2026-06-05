@@ -19,6 +19,7 @@
   import EditorToolbar from "./editor/EditorToolbar.svelte";
   import EditorArea from "./editor/EditorArea.svelte";
   import ImageBubbleMenu from "./editor/ImageBubbleMenu.svelte";
+  import ImageResizeHandles from "./editor/ImageResizeHandles.svelte";
   import BlockContextMenu from "./editor/BlockContextMenu.svelte";
   import SlashMenu from "./editor/SlashMenu.svelte";
   import VersionHistory from "./VersionHistory.svelte";
@@ -43,6 +44,7 @@
   let editor = $state<Editor | null>(null);
   let imageSelected = $state(false);
   let imageBubble = $state<{ left: number; top: number } | null>(null);
+  let imageRect = $state<{ left: number; top: number; width: number; height: number } | null>(null);
 
   let titleValue = $state("");
   let titleTimer: ReturnType<typeof setTimeout>;
@@ -340,6 +342,7 @@
     editor?.chain().focus().deleteSelection().run();
     imageSelected = false;
     imageBubble = null;
+    imageRect = null;
   }
 
   // ── Version save ──────────────────────────────────────────────────────────
@@ -465,6 +468,7 @@
     bind:editor
     bind:imageSelected
     bind:imageBubble
+    bind:imageRect
     onOpenContextMenu={openContextMenu}
     onCommentClick={handleCommentClick}
     onImageFile={handleImageFile}
@@ -476,6 +480,12 @@
   position={imageBubble}
   onAlign={setImageAlign}
   onDelete={deleteImage}
+/>
+
+<ImageResizeHandles
+  visible={imageSelected}
+  {imageRect}
+  {editor}
 />
 
 <BlockContextMenu
