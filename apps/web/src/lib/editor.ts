@@ -1,5 +1,6 @@
 import { Editor, Extension, Mark, mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
+import Blockquote from "@tiptap/extension-blockquote";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import Typography from "@tiptap/extension-typography";
@@ -276,6 +277,81 @@ export const CustomImage = Image.extend({
   },
 });
 
+// ── Custom Blockquote with author attribution ─────────────────────────────────
+
+export const CustomBlockquote = Blockquote.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      author: {
+        default: "",
+        parseHTML: (el) => el.getAttribute("data-author") ?? "",
+        renderHTML: (attrs) =>
+          attrs.author ? { "data-author": attrs.author as string } : {},
+      },
+    };
+  },
+
+  addNodeView() {
+    return ({ node, getPos, editor: ed }) => {
+      let currentAttrs = { ...node.attrs };
+
+      const figure = document.createElement("figure");
+      figure.className = "blockquote-figure";
+
+      const bq = document.createElement("blockquote");
+      bq.className = "blockquote-figure__content";
+
+      const cite = document.createElement("cite");
+      cite.contentEditable = "true";
+      cite.dataset.placeholder = "Tambahkan sumber…";
+      cite.className = "blockquote-figure__author";
+      cite.textContent = (currentAttrs.author as string) ?? "";
+
+      figure.appendChild(bq);
+      figure.appendChild(cite);
+
+      cite.addEventListener("input", () => {
+        const pos = typeof getPos === "function" ? getPos() : undefined;
+        if (pos === undefined) return;
+        const { tr } = ed.state;
+        tr.setNodeMarkup(pos, undefined, {
+          ...currentAttrs,
+          author: cite.textContent ?? "",
+        });
+        ed.view.dispatch(tr);
+      });
+
+      cite.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") cite.blur();
+        e.stopPropagation();
+      });
+
+      return {
+        dom: figure,
+        contentDOM: bq,
+
+        update(updatedNode) {
+          if (updatedNode.type.name !== "blockquote") return false;
+          currentAttrs = { ...updatedNode.attrs };
+          if (!cite.matches(":focus")) {
+            cite.textContent = (currentAttrs.author as string) ?? "";
+          }
+          return true;
+        },
+
+        stopEvent(event) {
+          return cite.contains(event.target as Node);
+        },
+
+        ignoreMutation(mutation) {
+          return cite.contains(mutation.target as Node);
+        },
+      };
+    };
+  },
+});
+
 // ── Slash command Extension ───────────────────────────────────────────────────
 
 const SlashMenuExtension = Extension.create({
@@ -434,7 +510,8 @@ export function createEditor({
     element,
     content: parsedContent ?? undefined,
     extensions: [
-      StarterKit,
+      StarterKit.configure({ blockquote: false }),
+      CustomBlockquote,
       CustomImage.configure({ allowBase64: true }),
       Placeholder.configure({ placeholder }),
       Typography.configure({

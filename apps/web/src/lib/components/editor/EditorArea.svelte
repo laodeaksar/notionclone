@@ -277,12 +277,59 @@
     padding: 0.1em 0.35em;
     font-size: 0.875em;
   }
-  :global(.ProseMirror blockquote) {
+  /* ── Blockquote / figure NodeView ───────────────────────── */
+  :global(.ProseMirror blockquote),
+  :global(.ProseMirror figure.blockquote-figure blockquote) {
     border-left: 3px solid hsl(var(--border));
     padding-left: 1rem;
-    margin-left: 0;
+    margin: 0;
     color: hsl(var(--muted-foreground));
     font-style: italic;
+  }
+
+  :global(.ProseMirror figure.blockquote-figure) {
+    margin: 0.75rem 0;
+  }
+
+  /* Author / attribution tag */
+  :global(.ProseMirror figure.blockquote-figure cite) {
+    display: block;
+    margin-top: 0.35rem;
+    padding-left: calc(1rem + 3px); /* align with blockquote text */
+    font-size: 0.8125rem;
+    font-style: normal;
+    font-weight: 500;
+    color: hsl(var(--foreground) / 0.6);
+    outline: none;
+    min-height: 1.4rem;
+    cursor: text;
+    border-radius: 0.25rem;
+    transition: background-color 0.1s;
+  }
+  :global(.ProseMirror figure.blockquote-figure cite::before) {
+    content: "— ";
+    opacity: 0.5;
+    pointer-events: none;
+    user-select: none;
+  }
+  :global(.ProseMirror figure.blockquote-figure cite:focus) {
+    background-color: hsl(var(--muted) / 0.45);
+  }
+  /* Placeholder — only when empty AND focused */
+  :global(.ProseMirror figure.blockquote-figure cite:empty::after) {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground) / 0.4);
+    font-weight: 400;
+    pointer-events: none;
+  }
+  :global(.ProseMirror figure.blockquote-figure cite:empty:not(:focus)::after) {
+    opacity: 0;
+  }
+  :global(.ProseMirror figure.blockquote-figure cite:empty::before) {
+    opacity: 0;
+  }
+  :global(.ProseMirror figure.blockquote-figure cite:empty:focus::before) {
+    opacity: 0.5;
   }
   :global(.ProseMirror h1) { font-size: 1.875rem; font-weight: 700; margin: 1.5rem 0 0.5rem; line-height: 1.2; }
   :global(.ProseMirror h2) { font-size: 1.5rem;   font-weight: 600; margin: 1.25rem 0 0.4rem; line-height: 1.3; }
