@@ -149,8 +149,16 @@
   }
 </script>
 
+{#if open}
+  <div
+    class="fixed inset-0 z-[59]"
+    role="presentation"
+    onclick={onClose}
+  ></div>
+{/if}
+
 <div
-  class="fixed top-0 right-0 h-full w-80 bg-card border-l border-border z-40
+  class="fixed top-0 right-0 h-full w-80 bg-card border-l border-border z-[60]
          flex flex-col shadow-xl transition-transform duration-200 ease-out"
   class:translate-x-full={!open}
   class:translate-x-0={open}

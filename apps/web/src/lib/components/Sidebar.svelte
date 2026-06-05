@@ -82,7 +82,7 @@
 </script>
 
 <aside
-  class="h-full border-r border-border bg-muted/30 flex flex-col overflow-hidden
+  class="h-full border-r border-border bg-background flex flex-col overflow-hidden
          transition-all duration-200"
   class:w-64={!collapsed}
   class:w-12={collapsed}

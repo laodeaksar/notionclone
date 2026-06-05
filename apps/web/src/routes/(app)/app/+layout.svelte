@@ -182,7 +182,7 @@
 
     <!-- Sidebar: always static on md+, slide-in drawer on mobile -->
     <div
-      class="fixed inset-y-0 left-0 z-40 md:relative md:z-auto md:translate-x-0 will-change-transform"
+      class="fixed inset-y-0 left-0 z-[60] md:relative md:z-auto md:translate-x-0 will-change-transform"
       class:transition-transform={!dragging}
       class:duration-200={!dragging}
       class:ease-out={!dragging}
