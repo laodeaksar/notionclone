@@ -3,6 +3,7 @@
   import PageTreeItem from "$lib/components/PageTreeItem.svelte";
   import type { Workspace } from "$lib/stores/workspace.js";
   import type { PageTree } from "$lib/stores/page.js";
+  import { Tooltip } from "@notion-clone/ui";
 
   let {
     currentWs,
@@ -23,14 +24,16 @@
   {#if currentWs}
     <div class="flex items-center justify-between px-1 mb-1">
       <p class="text-xs text-muted-foreground font-medium">PAGES</p>
-      <button
-        onclick={() => onCreatePage()}
-        disabled={createIsPending}
-        class="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
-        title="New page"
-      >
-        <Plus class="w-3.5 h-3.5" />
-      </button>
+      <Tooltip.Root content="New page" shortcut="⌘N" side="right">
+        <button
+          onclick={() => onCreatePage()}
+          disabled={createIsPending}
+          class="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+          aria-label="New page"
+        >
+          <Plus class="w-3.5 h-3.5" />
+        </button>
+      </Tooltip.Root>
     </div>
 
     {#if pagesLoading}

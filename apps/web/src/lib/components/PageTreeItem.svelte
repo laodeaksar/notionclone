@@ -5,7 +5,7 @@
   import { deletePageFn, updatePageFn, pagesKey } from "$lib/queries.js";
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { ChevronRight, ChevronDown, File, Plus, MoreHorizontal } from "lucide-svelte";
-  import { ContextMenu } from "@notion-clone/ui";
+  import { ContextMenu, Tooltip } from "@notion-clone/ui";
   import PageTreeItem from "./PageTreeItem.svelte";
 
   let {
@@ -154,28 +154,32 @@
         {#if !renaming}
           <div class="hidden group-hover:flex items-center gap-0.5 shrink-0">
             <!-- Add sub-page -->
-            <button
-              onclick={() => onCreateChild(node.id)}
-              class="w-5 h-5 flex items-center justify-center rounded
-                     text-muted-foreground hover:text-foreground
-                     hover:bg-accent-foreground/10 transition-colors"
-              title="Add sub-page"
-            >
-              <Plus class="w-3 h-3" />
-            </button>
+            <Tooltip.Root content="Add sub-page" side="top">
+              <button
+                onclick={() => onCreateChild(node.id)}
+                class="w-5 h-5 flex items-center justify-center rounded
+                       text-muted-foreground hover:text-foreground
+                       hover:bg-accent-foreground/10 transition-colors"
+                aria-label="Add sub-page"
+              >
+                <Plus class="w-3 h-3" />
+              </button>
+            </Tooltip.Root>
             <!-- More options — opens context menu -->
-            <button
-              onclick={(e) => {
-                const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                openAt(r.right, r.bottom + 4);
-              }}
-              class="w-5 h-5 flex items-center justify-center rounded
-                     text-muted-foreground hover:text-foreground
-                     hover:bg-accent-foreground/10 transition-colors"
-              title="More options"
-            >
-              <MoreHorizontal class="w-3 h-3" />
-            </button>
+            <Tooltip.Root content="More options" side="top">
+              <button
+                onclick={(e) => {
+                  const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  openAt(r.right, r.bottom + 4);
+                }}
+                class="w-5 h-5 flex items-center justify-center rounded
+                       text-muted-foreground hover:text-foreground
+                       hover:bg-accent-foreground/10 transition-colors"
+                aria-label="More options"
+              >
+                <MoreHorizontal class="w-3 h-3" />
+              </button>
+            </Tooltip.Root>
           </div>
         {/if}
       </div>

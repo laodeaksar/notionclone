@@ -149,6 +149,10 @@
       e.preventDefault();
       drawerOpen = !drawerOpen;
     }
+    if ((e.metaKey || e.ctrlKey) && e.key === "n") {
+      e.preventDefault();
+      handleNewPage();
+    }
     if (e.key === "Escape" && drawerOpen) {
       drawerOpen = false;
     }
