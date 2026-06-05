@@ -13,6 +13,7 @@
   } from "$lib/queries.js";
   import { createQuery, createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { PanelLeftClose, PanelLeftOpen, ChevronDown, X } from "lucide-svelte";
+  import { Tooltip } from "@notion-clone/ui";
 
   import WorkspaceSwitcherModal from "./sidebar/WorkspaceSwitcherModal.svelte";
   import SidebarPageTree from "./sidebar/SidebarPageTree.svelte";
@@ -91,7 +92,6 @@
         onclick={() => (showWorkspaceSwitcher = true)}
         class="flex-1 min-w-0 flex items-center gap-1.5 text-left rounded-md px-1 py-0.5
                hover:bg-accent transition-colors group"
-        title="Switch workspace"
       >
         <span class="font-semibold text-sm truncate flex-1">
           {currentWs?.name ?? "Select workspace"}
@@ -103,28 +103,35 @@
     {/if}
 
     <!-- Collapse toggle — hidden on mobile (drawer handles open/close) -->
-    <button
-      onclick={() => (collapsed = !collapsed)}
-      class="p-1 rounded hover:bg-accent text-muted-foreground transition-colors shrink-0
-             hidden md:flex"
-      title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+    <Tooltip.Root
+      content={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      shortcut="⌘\"
+      side="right"
+      class="hidden md:inline-flex"
     >
-      {#if collapsed}
-        <PanelLeftOpen class="w-4 h-4" />
-      {:else}
-        <PanelLeftClose class="w-4 h-4" />
-      {/if}
-    </button>
+      <button
+        onclick={() => (collapsed = !collapsed)}
+        class="p-1 rounded hover:bg-accent text-muted-foreground transition-colors shrink-0"
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        {#if collapsed}
+          <PanelLeftOpen class="w-4 h-4" />
+        {:else}
+          <PanelLeftClose class="w-4 h-4" />
+        {/if}
+      </button>
+    </Tooltip.Root>
 
     <!-- Close button — only visible on mobile drawer -->
-    <button
-      onclick={onClose}
-      class="p-1 rounded hover:bg-accent text-muted-foreground transition-colors shrink-0
-             flex md:hidden"
-      aria-label="Close menu"
-    >
-      <X class="w-4 h-4" />
-    </button>
+    <Tooltip.Root content="Close menu" side="right" class="flex md:hidden">
+      <button
+        onclick={onClose}
+        class="p-1 rounded hover:bg-accent text-muted-foreground transition-colors shrink-0"
+        aria-label="Close menu"
+      >
+        <X class="w-4 h-4" />
+      </button>
+    </Tooltip.Root>
   </div>
 
   {#if !collapsed}

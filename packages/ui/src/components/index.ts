@@ -8,3 +8,4 @@ export * as Dialog from "./dialog/index.js";
 export * as Separator from "./separator/index.js";
 export * as Alert from "./alert/index.js";
 export * as Kbd from "./kbd/index.js";
+export * as Tooltip from "./tooltip/index.js";
