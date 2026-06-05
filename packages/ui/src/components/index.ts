@@ -1,1 +1,10 @@
 export * as Button from "./button/index.js";
+export * as Input from "./input/index.js";
+export * as Label from "./label/index.js";
+export * as Textarea from "./textarea/index.js";
+export * as Badge from "./badge/index.js";
+export * as Avatar from "./avatar/index.js";
+export * as Dialog from "./dialog/index.js";
+export * as Separator from "./separator/index.js";
+export * as Alert from "./alert/index.js";
+export * as Kbd from "./kbd/index.js";
