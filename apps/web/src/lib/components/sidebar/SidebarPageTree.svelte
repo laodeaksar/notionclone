@@ -34,12 +34,32 @@
   }
 
   const visibleTree = $derived(filterTree(pagesTree, filterQuery));
+
+  function countTree(nodes: PageTree[]): number {
+    return nodes.reduce((acc, n) => acc + 1 + countTree(n.children), 0);
+  }
+
+  const totalCount = $derived(countTree(pagesTree));
+  const visibleCount = $derived(countTree(visibleTree));
+  const isFiltering = $derived(filterQuery.trim().length > 0);
 </script>
 
 <div class="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-2">
   {#if currentWs}
     <div class="flex items-center justify-between px-1">
-      <p class="text-xs text-muted-foreground font-medium">PAGES</p>
+      <div class="flex items-center gap-1.5">
+        <p class="text-xs text-muted-foreground font-medium">PAGES</p>
+        {#if !pagesLoading && totalCount > 0}
+          <span
+            class="inline-flex items-center justify-center rounded-full px-1.5 py-px text-[10px] font-medium leading-none
+                   {isFiltering
+                     ? 'bg-primary/15 text-primary'
+                     : 'bg-muted text-muted-foreground'}"
+          >
+            {isFiltering ? `${visibleCount}/${totalCount}` : totalCount}
+          </span>
+        {/if}
+      </div>
       <Tooltip.Root content="New page" shortcut="⌘N" side="right">
         <button
           onclick={() => onCreatePage()}
