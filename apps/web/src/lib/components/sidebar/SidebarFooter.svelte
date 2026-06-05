@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Sun, Moon, LogOut } from "lucide-svelte";
   import type { User } from "$lib/stores/user.js";
-  import { Avatar, Button } from "@notion-clone/ui";
+  import { Avatar, Button, Switch, Tooltip } from "@notion-clone/ui";
 
   let {
     user,
@@ -18,6 +18,7 @@
 
 {#if user}
   <div class="border-t border-border px-3 py-2 flex items-center justify-between gap-2">
+    <!-- User info -->
     <div class="min-w-0 flex items-center gap-2">
       <Avatar.Root fallback={user.name} size="sm" />
       <div class="min-w-0">
@@ -26,32 +27,38 @@
       </div>
     </div>
 
-    <div class="flex items-center gap-1 shrink-0">
-      <Button.Root
-        variant="ghost"
-        size="icon"
-        onclick={onToggleTheme}
-        title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-        aria-label="Toggle theme"
-        class="h-7 w-7"
+    <div class="flex items-center gap-2 shrink-0">
+      <!-- Dark mode switch -->
+      <Tooltip.Root
+        content={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        side="top"
       >
-        {#if theme === "dark"}
-          <Sun class="w-4 h-4" />
-        {:else}
-          <Moon class="w-4 h-4" />
-        {/if}
-      </Button.Root>
+        <div class="flex items-center gap-1.5">
+          {#if theme === "dark"}
+            <Moon class="w-3.5 h-3.5 text-muted-foreground" />
+          {:else}
+            <Sun class="w-3.5 h-3.5 text-muted-foreground" />
+          {/if}
+          <Switch.Root
+            checked={theme === "dark"}
+            onCheckedChange={onToggleTheme}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          />
+        </div>
+      </Tooltip.Root>
 
-      <Button.Root
-        variant="ghost"
-        size="icon"
-        onclick={onLogout}
-        title="Sign out"
-        aria-label="Sign out"
-        class="h-7 w-7"
-      >
-        <LogOut class="w-4 h-4" />
-      </Button.Root>
+      <!-- Logout -->
+      <Tooltip.Root content="Sign out" side="top">
+        <Button.Root
+          variant="ghost"
+          size="icon"
+          onclick={onLogout}
+          aria-label="Sign out"
+          class="h-7 w-7"
+        >
+          <LogOut class="w-4 h-4" />
+        </Button.Root>
+      </Tooltip.Root>
     </div>
   </div>
 {/if}
