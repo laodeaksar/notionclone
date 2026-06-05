@@ -12,10 +12,9 @@
     createPageFn,
   } from "$lib/queries.js";
   import { createQuery, createMutation, useQueryClient } from "@tanstack/svelte-query";
-  import { PanelLeftClose, PanelLeftOpen, ChevronDown, X } from "lucide-svelte";
-  import { Tooltip } from "@notion-clone/ui";
+  import { PanelLeftClose, PanelLeftOpen, X, Plus } from "lucide-svelte";
+  import { Tooltip, Select, Avatar } from "@notion-clone/ui";
 
-  import WorkspaceSwitcherModal from "./sidebar/WorkspaceSwitcherModal.svelte";
   import SidebarPageTree from "./sidebar/SidebarPageTree.svelte";
   import SidebarFooter from "./sidebar/SidebarFooter.svelte";
   import CreateWorkspaceModal from "./CreateWorkspaceModal.svelte";
@@ -31,7 +30,6 @@
   let user = $derived($userStore);
   let theme = $derived($themeStore);
   let collapsed = $state(false);
-  let showWorkspaceSwitcher = $state(false);
   let showCreateWs = $state(false);
 
   // ── Workspaces ─────────────────────────────────────────────────────────────
@@ -44,8 +42,12 @@
     }
   });
 
-  const currentWs = $derived(
-    workspaces.find((w) => w.id === $currentWorkspaceId) ?? null
+  const wsOptions = $derived(
+    workspaces.map((w) => ({
+      value: w.id,
+      label: w.name,
+      description: w.description ?? undefined,
+    }))
   );
 
   // ── Pages ──────────────────────────────────────────────────────────────────
@@ -86,32 +88,52 @@
   class:w-12={collapsed}
 >
   <!-- Header -->
-  <div class="flex items-center gap-2 px-3 py-3 border-b border-border min-w-0">
+  <div class="flex items-center gap-1 px-2 py-2.5 border-b border-border min-w-0">
     {#if !collapsed}
-      <button
-        onclick={() => (showWorkspaceSwitcher = true)}
-        class="flex-1 min-w-0 flex items-center gap-1.5 text-left rounded-md px-1 py-0.5
-               hover:bg-accent transition-colors group"
+      <!-- Inline workspace Select -->
+      <Select.Root
+        options={wsOptions}
+        value={$currentWorkspaceId}
+        onValueChange={(id) => currentWorkspaceId.set(id)}
+        placeholder="Select workspace"
+        class="flex-1 min-w-0"
       >
-        <span class="font-semibold text-sm truncate flex-1">
-          {currentWs?.name ?? "Select workspace"}
-        </span>
-        <ChevronDown
-          class="w-3.5 h-3.5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors"
-        />
-      </button>
+        {#snippet renderItem(opt, isSelected)}
+          <Avatar.Root fallback={opt.label} size="sm" class="rounded-md shrink-0" />
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium truncate">{opt.label}</p>
+            {#if opt.description}
+              <p class="text-xs text-muted-foreground truncate">{opt.description}</p>
+            {/if}
+          </div>
+        {/snippet}
+
+        {#snippet footer()}
+          <button
+            onclick={() => (showCreateWs = true)}
+            class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm
+                   text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            <div class="w-6 h-6 shrink-0 rounded-md border-2 border-dashed border-border
+                        flex items-center justify-center">
+              <Plus class="w-3.5 h-3.5" />
+            </div>
+            New workspace
+          </button>
+        {/snippet}
+      </Select.Root>
     {/if}
 
-    <!-- Collapse toggle — hidden on mobile (drawer handles open/close) -->
+    <!-- Collapse toggle — hidden on mobile -->
     <Tooltip.Root
       content={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       shortcut="⌘\"
       side="right"
-      class="hidden md:inline-flex"
+      class="hidden md:inline-flex shrink-0"
     >
       <button
         onclick={() => (collapsed = !collapsed)}
-        class="p-1 rounded hover:bg-accent text-muted-foreground transition-colors shrink-0"
+        class="p-1 rounded hover:bg-accent text-muted-foreground transition-colors"
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
         {#if collapsed}
@@ -122,11 +144,11 @@
       </button>
     </Tooltip.Root>
 
-    <!-- Close button — only visible on mobile drawer -->
-    <Tooltip.Root content="Close menu" side="right" class="flex md:hidden">
+    <!-- Close button — mobile drawer only -->
+    <Tooltip.Root content="Close menu" side="right" class="flex md:hidden shrink-0">
       <button
         onclick={onClose}
-        class="p-1 rounded hover:bg-accent text-muted-foreground transition-colors shrink-0"
+        class="p-1 rounded hover:bg-accent text-muted-foreground transition-colors"
         aria-label="Close menu"
       >
         <X class="w-4 h-4" />
@@ -136,7 +158,7 @@
 
   {#if !collapsed}
     <SidebarPageTree
-      {currentWs}
+      currentWs={workspaces.find((w) => w.id === $currentWorkspaceId) ?? null}
       {pagesTree}
       {pagesLoading}
       createIsPending={createPage.isPending}
@@ -151,17 +173,6 @@
     />
   {/if}
 </aside>
-
-<!-- Modals (rendered outside aside to avoid clipping) -->
-{#if showWorkspaceSwitcher}
-  <WorkspaceSwitcherModal
-    {workspaces}
-    currentWorkspaceId={$currentWorkspaceId}
-    onSelect={(ws) => currentWorkspaceId.set(ws.id)}
-    onClose={() => (showWorkspaceSwitcher = false)}
-    onCreateNew={() => (showCreateWs = true)}
-  />
-{/if}
 
 {#if showCreateWs}
   <CreateWorkspaceModal onclose={() => (showCreateWs = false)} />
