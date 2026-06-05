@@ -1,4 +1,5 @@
 import { Editor, Extension, Mark, Node, mergeAttributes } from "@tiptap/core";
+import { TextSelection } from "prosemirror-state";
 import StarterKit from "@tiptap/starter-kit";
 import Blockquote from "@tiptap/extension-blockquote";
 import Image from "@tiptap/extension-image";
@@ -328,16 +329,53 @@ export const CustomBlockquote = Blockquote.extend({
     return {
       ...this.parent?.(),
       Enter: ({ editor }) => {
-        const { $from } = editor.state.selection;
-        let insideBlockquote = false;
+        const { $from, empty } = editor.state.selection;
+        let blockquoteDepth = -1;
         for (let d = $from.depth; d > 0; d--) {
           if ($from.node(d).type.name === "blockquote") {
-            insideBlockquote = true;
+            blockquoteDepth = d;
             break;
           }
         }
-        if (!insideBlockquote) return false;
+        if (blockquoteDepth === -1) return false;
+
+        const currentNode = $from.node($from.depth);
+        const isEmptyParagraph =
+          empty && currentNode.type.name === "paragraph" && currentNode.content.size === 0;
+
+        if (isEmptyParagraph) {
+          const { state, view } = editor;
+          const { tr, schema } = state;
+          const paraStart = $from.before($from.depth);
+          const paraEnd = $from.after($from.depth);
+          const bqEnd = $from.before(blockquoteDepth) + $from.node(blockquoteDepth).nodeSize;
+          const newPara = schema.nodes.paragraph.create();
+          tr.delete(paraStart, paraEnd).insert(tr.mapping.map(bqEnd), newPara);
+          const landingPos = tr.mapping.map(bqEnd) + 1;
+          tr.setSelection(TextSelection.near(tr.doc.resolve(landingPos)));
+          view.dispatch(tr);
+          return true;
+        }
+
         return editor.commands.splitBlock();
+      },
+      "Shift-Enter": ({ editor }) => {
+        const { $from } = editor.state.selection;
+        let blockquoteDepth = -1;
+        for (let d = $from.depth; d > 0; d--) {
+          if ($from.node(d).type.name === "blockquote") {
+            blockquoteDepth = d;
+            break;
+          }
+        }
+        if (blockquoteDepth === -1) return false;
+
+        const bqNode = $from.node(blockquoteDepth);
+        const afterBlockquote = $from.before(blockquoteDepth) + bqNode.nodeSize;
+        return editor.chain()
+          .insertContentAt(afterBlockquote, { type: "paragraph" })
+          .setTextSelection(afterBlockquote + 1)
+          .run();
       },
     };
   },
