@@ -130,7 +130,43 @@ export const CommentMark = Mark.create({
   },
 });
 
-// ── Custom Image extension with align + pendingId attributes ──────────────────
+// ── Custom Image extension with align + width + caption + pendingId ───────────
+
+const ALIGN_STYLES: Record<string, string> = {
+  left: "display:block;margin-left:0;margin-right:auto;",
+  center: "display:block;margin-left:auto;margin-right:auto;",
+  right: "display:block;margin-left:auto;margin-right:0;",
+  "full-width": "display:block;width:100%;",
+};
+
+function buildFigureStyle(align: string, width: number | null | undefined) {
+  const base = ALIGN_STYLES[align] ?? ALIGN_STYLES.center;
+  if (width && align !== "full-width") {
+    return base + `max-width:${width}px;width:${width}px;`;
+  }
+  return base;
+}
+
+function syncFigureAttrs(
+  figure: HTMLElement,
+  img: HTMLImageElement,
+  attrs: Record<string, unknown>
+) {
+  const align = (attrs.align as string) ?? "center";
+  const width = attrs.width as number | null | undefined;
+  figure.style.cssText = buildFigureStyle(align, width);
+  figure.dataset.align = align;
+
+  img.src = (attrs.src as string) ?? "";
+  if (attrs.alt) img.alt = attrs.alt as string;
+  else img.removeAttribute("alt");
+  if (attrs.title) img.title = attrs.title as string;
+  else img.removeAttribute("title");
+
+  const pendingId = attrs.pendingId as string | null;
+  if (pendingId) img.dataset.pendingId = pendingId;
+  else delete img.dataset.pendingId;
+}
 
 export const CustomImage = Image.extend({
   addAttributes() {
@@ -139,13 +175,7 @@ export const CustomImage = Image.extend({
       align: {
         default: "center",
         renderHTML: (attrs) => {
-          const styleMap: Record<string, string> = {
-            left: "display:block;margin-left:0;margin-right:auto;",
-            center: "display:block;margin-left:auto;margin-right:auto;",
-            right: "display:block;margin-left:auto;margin-right:0;",
-            "full-width": "display:block;width:100%;",
-          };
-          const base = styleMap[attrs.align as string] ?? styleMap.center;
+          const base = ALIGN_STYLES[attrs.align as string] ?? ALIGN_STYLES.center;
           const widthStyle =
             attrs.width && attrs.align !== "full-width"
               ? `max-width:${attrs.width}px;width:${attrs.width}px;`
@@ -155,8 +185,7 @@ export const CustomImage = Image.extend({
             "data-align": attrs.align,
           };
         },
-        parseHTML: (element) =>
-          element.getAttribute("data-align") ?? "center",
+        parseHTML: (el) => el.getAttribute("data-align") ?? "center",
       },
       width: {
         default: null,
@@ -167,14 +196,82 @@ export const CustomImage = Image.extend({
         renderHTML: (attrs) =>
           attrs.width ? { "data-width": String(attrs.width) } : {},
       },
+      caption: {
+        default: "",
+        parseHTML: (el) => el.getAttribute("data-caption") ?? "",
+        renderHTML: (attrs) =>
+          attrs.caption ? { "data-caption": attrs.caption as string } : {},
+      },
       // Identifies images queued for upload while offline.
-      // Value: unique ID string while pending; "error:<id>" on permanent failure; null when synced.
       pendingId: {
         default: null,
         parseHTML: (el) => el.getAttribute("data-pending-id") ?? null,
         renderHTML: (attrs) =>
           attrs.pendingId ? { "data-pending-id": attrs.pendingId } : {},
       },
+    };
+  },
+
+  addNodeView() {
+    return ({ node, getPos, editor: ed }) => {
+      let currentAttrs = { ...node.attrs };
+
+      const figure = document.createElement("figure");
+      figure.className = "image-figure";
+
+      const img = document.createElement("img");
+      img.className = "image-figure__img";
+
+      const captionEl = document.createElement("figcaption");
+      captionEl.contentEditable = "true";
+      captionEl.dataset.placeholder = "Add a caption…";
+      captionEl.className = "image-figure__caption";
+
+      syncFigureAttrs(figure, img, currentAttrs);
+      captionEl.textContent = (currentAttrs.caption as string) ?? "";
+
+      figure.appendChild(img);
+      figure.appendChild(captionEl);
+
+      captionEl.addEventListener("input", () => {
+        const pos = typeof getPos === "function" ? getPos() : undefined;
+        if (pos === undefined) return;
+        const { tr } = ed.state;
+        tr.setNodeMarkup(pos, undefined, {
+          ...currentAttrs,
+          caption: captionEl.textContent ?? "",
+        });
+        ed.view.dispatch(tr);
+      });
+
+      captionEl.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          captionEl.blur();
+        }
+        e.stopPropagation();
+      });
+
+      return {
+        dom: figure,
+
+        update(updatedNode) {
+          if (updatedNode.type.name !== "image") return false;
+          currentAttrs = { ...updatedNode.attrs };
+          syncFigureAttrs(figure, img, currentAttrs);
+          if (!captionEl.matches(":focus")) {
+            captionEl.textContent = (currentAttrs.caption as string) ?? "";
+          }
+          return true;
+        },
+
+        stopEvent(event) {
+          return captionEl.contains(event.target as Node);
+        },
+
+        ignoreMutation(mutation) {
+          return captionEl.contains(mutation.target as Node);
+        },
+      };
     };
   },
 });

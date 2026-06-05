@@ -42,7 +42,12 @@
       try {
         const domNode = editor.view.nodeDOM(selection.from) as Element | null;
         if (domNode) {
-          const rect = domNode.getBoundingClientRect();
+          // NodeView wraps in <figure>; get the actual <img> for accurate rect
+          const imgEl =
+            domNode instanceof HTMLImageElement
+              ? domNode
+              : (domNode.querySelector("img") ?? domNode);
+          const rect = imgEl.getBoundingClientRect();
           imageBubble = {
             left: Math.max(4, rect.left + rect.width / 2 - 96),
             top: rect.bottom + 8,
@@ -187,25 +192,68 @@
     pointer-events: none;
     height: 0;
   }
-  :global(.ProseMirror img) {
+  /* ── Image / figure NodeView ─────────────────────────────── */
+  :global(.ProseMirror img),
+  :global(.ProseMirror figure.image-figure img) {
     max-width: 100%;
     height: auto;
     border-radius: 0.375rem;
     cursor: pointer;
+    display: block;
   }
+
+  /* Selection ring on the NodeView figure */
+  :global(.ProseMirror figure.image-figure.ProseMirror-selectednode img) {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+  /* Fallback for bare img nodes (legacy / clipboard) */
   :global(.ProseMirror img.ProseMirror-selectednode) {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }
 
-  /* Pending upload: dimmed with dashed border to signal "not yet synced" */
-  :global(.ProseMirror img[data-pending-id]) {
+  /* Figure wrapper */
+  :global(.ProseMirror figure.image-figure) {
+    margin: 0.5rem 0;
+  }
+
+  /* Caption */
+  :global(.ProseMirror figure.image-figure figcaption) {
+    display: block;
+    text-align: center;
+    font-size: 0.8125rem;
+    color: hsl(var(--muted-foreground));
+    padding: 0.3rem 0.5rem 0.1rem;
+    outline: none;
+    min-height: 1.4rem;
+    cursor: text;
+    border-radius: 0 0 0.25rem 0.25rem;
+    transition: background-color 0.1s;
+  }
+  :global(.ProseMirror figure.image-figure figcaption:focus) {
+    background-color: hsl(var(--muted) / 0.5);
+  }
+  /* Placeholder — only visible when empty AND focused */
+  :global(.ProseMirror figure.image-figure figcaption:empty::before) {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground) / 0.45);
+    pointer-events: none;
+  }
+  :global(.ProseMirror figure.image-figure figcaption:empty:not(:focus)::before) {
+    opacity: 0;
+  }
+
+  /* Pending upload: dimmed with dashed border */
+  :global(.ProseMirror img[data-pending-id]),
+  :global(.ProseMirror figure.image-figure img[data-pending-id]) {
     opacity: 0.55;
     outline: 2px dashed hsl(var(--muted-foreground));
     outline-offset: 3px;
   }
   /* Error state: red dashed border */
-  :global(.ProseMirror img[data-pending-id^="error:"]) {
+  :global(.ProseMirror img[data-pending-id^="error:"]),
+  :global(.ProseMirror figure.image-figure img[data-pending-id^="error:"]) {
     opacity: 0.4;
     outline: 2px dashed hsl(var(--destructive));
     outline-offset: 3px;
