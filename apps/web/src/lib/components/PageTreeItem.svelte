@@ -1,20 +1,25 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
+  import { getContext } from "svelte";
   import type { PageTree } from "$lib/stores/page.js";
   import { deletePageFn, updatePageFn, pagesKey } from "$lib/queries.js";
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
-  import { ChevronRight, ChevronDown, File, Plus, MoreHorizontal } from "lucide-svelte";
+  import { ChevronRight, ChevronDown, File, Plus, MoreHorizontal, GripVertical } from "lucide-svelte";
   import { ContextMenu, Tooltip } from "@notion-clone/ui";
   import PageTreeItem from "./PageTreeItem.svelte";
 
   let {
     node,
     depth,
+    siblings,
+    parentId,
     onCreateChild,
   }: {
     node: PageTree;
     depth: number;
+    siblings: PageTree[];
+    parentId: string | null;
     onCreateChild: (parentId: string) => void;
   } = $props();
 
@@ -52,7 +57,54 @@
     }
   });
 
-  // ── Context menu items (defined in script — string icon names) ─────────────
+  // ── Drag context ───────────────────────────────────────────────────────────
+  const drag = getContext<{
+    draggingId: string | null;
+    dragOverId: string | null;
+    dragPos: "above" | "below" | null;
+    isFiltering: boolean;
+    onDragStart: (id: string) => void;
+    onDragOver: (id: string, pos: "above" | "below") => void;
+    onDrop: (opts: {
+      targetId: string;
+      pos: "above" | "below";
+      siblings: PageTree[];
+      parentId: string | null;
+    }) => void;
+    onDragEnd: () => void;
+  }>("page-drag");
+
+  let isDragging = $derived(drag.draggingId === node.id);
+  let isDropTarget = $derived(drag.dragOverId === node.id);
+  let showAbove = $derived(isDropTarget && drag.dragPos === "above");
+  let showBelow = $derived(isDropTarget && drag.dragPos === "below");
+
+  function handleDragStart(e: DragEvent) {
+    if (drag.isFiltering) return;
+    e.dataTransfer?.setData("text/plain", node.id);
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+    drag.onDragStart(node.id);
+  }
+
+  function handleDragOver(e: DragEvent) {
+    if (drag.isFiltering || !drag.draggingId || drag.draggingId === node.id) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const pos = e.clientY < rect.top + rect.height / 2 ? "above" : "below";
+    drag.onDragOver(node.id, pos);
+  }
+
+  function handleDrop(e: DragEvent) {
+    e.preventDefault();
+    drag.onDrop({ targetId: node.id, pos: drag.dragPos ?? "below", siblings, parentId });
+  }
+
+  function handleDragEnd() {
+    drag.onDragEnd();
+  }
+
+  // ── Context menu ───────────────────────────────────────────────────────────
   const menuItems = $derived([
     {
       label: "Rename",
@@ -100,15 +152,44 @@
   }
 </script>
 
-<div>
+<div
+  class="relative"
+  draggable={!drag.isFiltering}
+  ondragstart={handleDragStart}
+  ondragover={handleDragOver}
+  ondrop={handleDrop}
+  ondragend={handleDragEnd}
+  ondragleave={(e) => {
+    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+      if (drag.dragOverId === node.id) drag.onDragEnd();
+    }
+  }}
+>
+  <!-- Drop indicator — above -->
+  {#if showAbove}
+    <div class="absolute top-0 left-0 right-0 h-0.5 bg-primary rounded-full z-10 pointer-events-none"></div>
+  {/if}
+
   <ContextMenu.Root items={menuItems}>
     {#snippet children({ openAt })}
       <div
         class="group flex items-center gap-1 px-1 py-0.5 rounded text-sm
-               hover:bg-accent transition-colors cursor-pointer"
+               hover:bg-accent transition-colors cursor-pointer select-none
+               {isDragging ? 'opacity-40' : ''}"
         class:bg-accent={isActive}
         style="padding-left: {depth * 12 + 4}px"
       >
+        <!-- Drag handle -->
+        {#if !drag.isFiltering}
+          <span
+            class="opacity-0 group-hover:opacity-100 flex-shrink-0 cursor-grab active:cursor-grabbing
+                   text-muted-foreground hover:text-foreground transition-opacity"
+            aria-hidden="true"
+          >
+            <GripVertical class="w-3 h-3" />
+          </span>
+        {/if}
+
         <!-- Expand toggle -->
         <button
           onclick={() => (expanded = !expanded)}
@@ -153,7 +234,6 @@
         <!-- Hover actions (only when not renaming) -->
         {#if !renaming}
           <div class="hidden group-hover:flex items-center gap-0.5 shrink-0">
-            <!-- Add sub-page -->
             <Tooltip.Root content="Add sub-page" side="top">
               <button
                 onclick={() => onCreateChild(node.id)}
@@ -165,7 +245,6 @@
                 <Plus class="w-3 h-3" />
               </button>
             </Tooltip.Root>
-            <!-- More options — opens context menu -->
             <Tooltip.Root content="More options" side="top">
               <button
                 onclick={(e) => {
@@ -186,9 +265,20 @@
     {/snippet}
   </ContextMenu.Root>
 
+  <!-- Drop indicator — below -->
+  {#if showBelow}
+    <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full z-10 pointer-events-none"></div>
+  {/if}
+
   {#if expanded && node.children.length > 0}
     {#each node.children as child (child.id)}
-      <PageTreeItem node={child} depth={depth + 1} {onCreateChild} />
+      <PageTreeItem
+        node={child}
+        depth={depth + 1}
+        siblings={node.children}
+        parentId={node.id}
+        {onCreateChild}
+      />
     {/each}
   {/if}
 </div>

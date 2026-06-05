@@ -172,6 +172,23 @@ export async function deletePageFn(id: string): Promise<void> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
+export async function reorderPageFn({
+  id,
+  parentId,
+  order,
+}: {
+  id: string;
+  parentId: string | null;
+  order: number;
+}): Promise<Page> {
+  const res = await api.api.pages[":id"].reorder.$patch({
+    param: { id },
+    json: { parentId, order },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<Page>;
+}
+
 export async function saveVersionFn(input: {
   pageId: string;
   title: string;
