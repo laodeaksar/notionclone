@@ -11,3 +11,4 @@ export * as Kbd from "./kbd/index.js";
 export * as Tooltip from "./tooltip/index.js";
 export * as Select from "./select/index.js";
 export * as Switch from "./switch/index.js";
+export * as ContextMenu from "./context-menu/index.js";
