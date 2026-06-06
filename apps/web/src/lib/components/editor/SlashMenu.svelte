@@ -6,7 +6,7 @@
     Pilcrow, List, ListOrdered,
     Code2, Quote, Minus,
     Lightbulb, Info, AlertTriangle, CheckCircle,
-    ImageIcon, Link,
+    ImageIcon, Link, PlayCircle,
   } from "lucide-svelte";
   import type { Component } from "svelte";
 
@@ -29,6 +29,7 @@
     "minus": Minus,
     "image": ImageIcon,
     "image-link": Link,
+    "video": PlayCircle,
     "lightbulb": Lightbulb,
     "info": Info,
     "alert-triangle": AlertTriangle,
@@ -123,8 +124,8 @@
     {#if slash.urlInputMode}
       <!-- URL input mode -->
       <div class="px-3 py-2 border-b border-border flex items-center gap-2">
-        <ImageIcon class="w-3.5 h-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-        <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Image from URL</p>
+        <Link class="w-3.5 h-3.5 shrink-0 text-muted-foreground" strokeWidth={2} />
+        <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{slash.urlLabel || "Paste URL"}</p>
       </div>
       <div class="p-3 flex flex-col gap-2">
         <div class="flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5 focus-within:ring-1 focus-within:ring-ring">
@@ -134,7 +135,7 @@
             bind:value={urlValue}
             onkeydown={handleUrlKeydown}
             type="url"
-            placeholder="https://example.com/image.png"
+            placeholder={slash.urlPlaceholder || "https://..."}
             class="flex-1 min-w-0 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
           />
         </div>

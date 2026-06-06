@@ -19,6 +19,9 @@ export interface SlashItem {
   icon: string;
   shortcut?: string;
   inputMode?: "url";
+  urlPlaceholder?: string;
+  urlLabel?: string;
+  urlCommand?: (editor: Editor, url: string) => void;
   command: (editor: Editor) => void;
 }
 
@@ -114,6 +117,32 @@ export const SLASH_ITEMS: SlashItem[] = [
     description: "Embed an image from a web link",
     icon: "image-link",
     inputMode: "url",
+    urlPlaceholder: "https://example.com/image.png",
+    urlLabel: "Image from URL",
+    urlCommand: (ed, url) => {
+      const src = url.startsWith("http") ? url : `https://${url}`;
+      ed.chain().focus().insertContent({
+        type: "image",
+        attrs: { src, align: "center" },
+      }).run();
+    },
+    command: () => {},
+  },
+  {
+    title: "Video",
+    description: "Embed a YouTube or Vimeo video",
+    icon: "video",
+    inputMode: "url",
+    urlPlaceholder: "https://youtube.com/watch?v=...",
+    urlLabel: "Embed Video",
+    urlCommand: (ed, url) => {
+      const embedUrl = getVideoEmbedUrl(url);
+      if (!embedUrl) return;
+      ed.chain().focus().insertContent({
+        type: "videoEmbed",
+        attrs: { src: embedUrl },
+      }).run();
+    },
     command: () => {},
   },
   {
@@ -176,6 +205,8 @@ export interface SlashMenuState {
   /** When true, the menu shows a URL input field instead of the items list. */
   urlInputMode: boolean;
   onUrlSubmit: ((url: string) => void) | null;
+  urlLabel: string;
+  urlPlaceholder: string;
 }
 
 export const slashMenuStore = writable<SlashMenuState>({
@@ -187,6 +218,8 @@ export const slashMenuStore = writable<SlashMenuState>({
   executeCommand: null,
   urlInputMode: false,
   onUrlSubmit: null,
+  urlLabel: "",
+  urlPlaceholder: "",
 });
 
 // ── Comment Mark extension ────────────────────────────────────────────────────
@@ -576,6 +609,100 @@ export const CalloutExtension = Node.create({
   },
 });
 
+// ── Video URL parser ──────────────────────────────────────────────────────────
+
+export function getVideoEmbedUrl(url: string): string | null {
+  const raw = url.trim();
+  const full = raw.startsWith("http") ? raw : `https://${raw}`;
+  try {
+    const u = new URL(full);
+
+    // YouTube watch URL: youtube.com/watch?v=ID
+    if ((u.hostname === "www.youtube.com" || u.hostname === "youtube.com") && u.pathname === "/watch") {
+      const id = u.searchParams.get("v");
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+
+    // YouTube short URL: youtu.be/ID
+    if (u.hostname === "youtu.be") {
+      const id = u.pathname.replace("/", "");
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+
+    // YouTube shorts: youtube.com/shorts/ID
+    if ((u.hostname === "www.youtube.com" || u.hostname === "youtube.com") && u.pathname.startsWith("/shorts/")) {
+      const id = u.pathname.replace("/shorts/", "");
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+
+    // Vimeo: vimeo.com/ID
+    if (u.hostname === "vimeo.com" || u.hostname === "www.vimeo.com") {
+      const id = u.pathname.replace("/", "");
+      if (id) return `https://player.vimeo.com/video/${id}`;
+    }
+
+    // Already an embed URL — pass through
+    if (u.hostname.includes("youtube.com/embed") || u.hostname.includes("player.vimeo.com")) {
+      return full;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ── VideoEmbed Node ───────────────────────────────────────────────────────────
+
+export const VideoEmbed = Node.create({
+  name: "videoEmbed",
+  group: "block",
+  atom: true,
+  draggable: true,
+
+  addAttributes() {
+    return {
+      src: { default: null },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: "div[data-video-embed]" }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "div",
+      mergeAttributes({ "data-video-embed": "" }, HTMLAttributes),
+    ];
+  },
+
+  addNodeView() {
+    return ({ node }) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "video-embed";
+      wrapper.setAttribute("data-video-embed", "");
+
+      const iframe = document.createElement("iframe");
+      iframe.src = (node.attrs.src as string) ?? "";
+      iframe.allowFullscreen = true;
+      iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+      iframe.className = "video-embed__iframe";
+
+      wrapper.appendChild(iframe);
+
+      return {
+        dom: wrapper,
+        update(updatedNode) {
+          if (updatedNode.type.name !== "videoEmbed") return false;
+          iframe.src = (updatedNode.attrs.src as string) ?? "";
+          return true;
+        },
+      };
+    };
+  },
+});
+
 // ── Slash command Extension ───────────────────────────────────────────────────
 
 const SlashMenuExtension = Extension.create({
@@ -615,18 +742,13 @@ const SlashMenuExtension = Extension.create({
             slashMenuStore.update((s) => ({
               ...s,
               urlInputMode: true,
+              urlLabel: props.urlLabel ?? props.title,
+              urlPlaceholder: props.urlPlaceholder ?? "https://...",
               onUrlSubmit: (url: string) => {
                 const trimmed = url.trim();
-                if (!trimmed) {
-                  slashMenuStore.update((st) => ({ ...st, open: false, urlInputMode: false, onUrlSubmit: null }));
-                  return;
-                }
-                const src = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
-                ed.chain().focus().insertContent({
-                  type: "image",
-                  attrs: { src, align: "center" },
-                }).run();
                 slashMenuStore.update((st) => ({ ...st, open: false, urlInputMode: false, onUrlSubmit: null }));
+                if (!trimmed) return;
+                props.urlCommand?.(ed, trimmed);
               },
             }));
             return;
@@ -754,6 +876,7 @@ export function createEditor({
       CustomBlockquote,
       CustomImage.configure({ allowBase64: true }),
       CalloutExtension,
+      VideoEmbed,
       Placeholder.configure({ placeholder }),
       Typography.configure({
         // Disable em-dash so "---" fires the horizontal-rule input rule
