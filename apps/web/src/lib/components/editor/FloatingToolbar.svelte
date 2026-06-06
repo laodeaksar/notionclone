@@ -2,8 +2,8 @@
   import { computePosition, flip, shift, offset, autoUpdate } from "@floating-ui/dom";
   import type { Editor } from "@tiptap/core";
   import {
-    Bold, Italic, Strikethrough, Code, Quote,
-    Link, AlignLeft, AlignCenter, AlignRight, Unlink, MessageSquare,
+    Bold, Italic, Strikethrough, Code,
+    Link, Unlink, MessageSquare,
   } from "lucide-svelte";
 
   let {
@@ -27,11 +27,10 @@
   let isItalic = $state(false);
   let isStrike = $state(false);
   let isCode = $state(false);
-  let isBlockquote = $state(false);
   let isLink = $state(false);
   let currentLink = $state("");
 
-  // ── Position via floating-ui ───────────────────────────────────────────────
+  // ── Position below the selection via floating-ui ───────────────────────────
 
   $effect(() => {
     if (!visible || !toolbarEl) return;
@@ -52,10 +51,10 @@
     async function update() {
       if (!el) return;
       const { x, y } = await computePosition(virtualRef, el, {
-        placement: "top",
+        placement: "bottom",
         middleware: [
           offset(8),
-          flip({ padding: 8, fallbackPlacements: ["bottom"] }),
+          flip({ padding: 8, fallbackPlacements: ["top"] }),
           shift({ padding: 8 }),
         ],
       });
@@ -81,7 +80,6 @@
     isItalic = editor.isActive("italic");
     isStrike = editor.isActive("strike");
     isCode = editor.isActive("code");
-    isBlockquote = editor.isActive("blockquote");
     isLink = editor.isActive("link");
     currentLink = editor.getAttributes("link").href ?? "";
   }
@@ -205,6 +203,7 @@
         {/if}
       </div>
     {:else}
+      <!-- Inline marks — directly related to selected text -->
       <button onclick={() => { editor?.chain().focus().toggleBold().run(); updateMarks(); }} class="toolbar-btn" class:active={isBold} title="Bold (⌘B)">
         <Bold class="w-3.5 h-3.5" strokeWidth={isBold ? 3 : 2} />
       </button>
@@ -214,7 +213,7 @@
       <button onclick={() => { editor?.chain().focus().toggleStrike().run(); updateMarks(); }} class="toolbar-btn" class:active={isStrike} title="Strikethrough">
         <Strikethrough class="w-3.5 h-3.5" strokeWidth={2} />
       </button>
-      <button onclick={() => { editor?.chain().focus().toggleCode().run(); updateMarks(); }} class="toolbar-btn" class:active={isCode} title="Inline Code">
+      <button onclick={() => { editor?.chain().focus().toggleCode().run(); updateMarks(); }} class="toolbar-btn" class:active={isCode} title="Inline code">
         <Code class="w-3.5 h-3.5" strokeWidth={2} />
       </button>
 
@@ -222,36 +221,6 @@
 
       <button onclick={openLinkMode} class="toolbar-btn" class:active={isLink} title="Link — ⌘K">
         <Link class="w-3.5 h-3.5" strokeWidth={2} />
-      </button>
-      <button onclick={() => { editor?.chain().focus().toggleBlockquote().run(); updateMarks(); }} class="toolbar-btn" class:active={isBlockquote} title="Blockquote">
-        <Quote class="w-3.5 h-3.5" strokeWidth={2} />
-      </button>
-
-      <div class="w-px h-5 bg-border mx-0.5 shrink-0"></div>
-
-      <button
-        onclick={() => editor?.chain().focus().setTextAlign("left").run()}
-        class="toolbar-btn"
-        class:active={editor?.isActive({ textAlign: "left" })}
-        title="Align left"
-      >
-        <AlignLeft class="w-3.5 h-3.5" strokeWidth={2} />
-      </button>
-      <button
-        onclick={() => editor?.chain().focus().setTextAlign("center").run()}
-        class="toolbar-btn"
-        class:active={editor?.isActive({ textAlign: "center" })}
-        title="Align center"
-      >
-        <AlignCenter class="w-3.5 h-3.5" strokeWidth={2} />
-      </button>
-      <button
-        onclick={() => editor?.chain().focus().setTextAlign("right").run()}
-        class="toolbar-btn"
-        class:active={editor?.isActive({ textAlign: "right" })}
-        title="Align right"
-      >
-        <AlignRight class="w-3.5 h-3.5" strokeWidth={2} />
       </button>
 
       {#if onComment}
