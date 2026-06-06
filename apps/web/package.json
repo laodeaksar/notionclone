@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@elysiajs/eden": "^1.4.9",
+    "@floating-ui/dom": "^1.7.6",
     "@formisch/svelte": "^0.8.0",
     "@notion-clone/schemas": "workspace:*",
     "@notion-clone/ui": "workspace:*",

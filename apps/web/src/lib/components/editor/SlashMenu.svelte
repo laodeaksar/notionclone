@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { computePosition, flip, shift, offset, autoUpdate } from "@floating-ui/dom";
   import { slashMenuStore, type SlashMenuState } from "$lib/editor.js";
   import {
     Heading1, Heading2, Heading3,
@@ -34,46 +35,56 @@
     slashMenuStore.update((s) => ({ ...s, open: false }));
   }
 
-  let bottomPx = $state(0);
-  let leftPx = $state(0);
-
-  function recalc() {
-    if (!slash.coords) return;
-    const vv = window.visualViewport;
-    const vvHeight = vv ? vv.height : window.innerHeight;
-    const vvOffsetTop = vv ? vv.offsetTop : 0;
-    const layoutHeight = window.innerHeight;
-    const caretTop = slash.coords.top;
-    bottomPx = layoutHeight - caretTop + 8 - vvOffsetTop + (layoutHeight - vvHeight - vvOffsetTop);
-    leftPx = slash.coords.left;
-  }
+  let menuEl: HTMLDivElement | undefined = $state();
+  let posX = $state(0);
+  let posY = $state(0);
 
   $effect(() => {
-    if (!slash.open || !slash.coords) return;
+    const isOpen = slash.open;
+    const hasItems = slash.items.length > 0;
+    const rect = slash.rect;
+    const ctx = slash.contextElement;
 
-    recalc();
+    if (!isOpen || !hasItems || !rect || !menuEl) return;
 
-    const vv = window.visualViewport;
-    if (vv) {
-      vv.addEventListener("resize", recalc);
-      vv.addEventListener("scroll", recalc);
-    }
-    window.addEventListener("resize", recalc);
-
-    return () => {
-      if (vv) {
-        vv.removeEventListener("resize", recalc);
-        vv.removeEventListener("scroll", recalc);
-      }
-      window.removeEventListener("resize", recalc);
+    const virtualRef = {
+      getBoundingClientRect: (): DOMRect => rect() ?? new DOMRect(0, 0, 0, 0),
+      ...(ctx ? { contextElement: ctx } : {}),
     };
+
+    async function updatePos() {
+      if (!menuEl) return;
+      const { x, y } = await computePosition(virtualRef, menuEl, {
+        placement: "bottom-start",
+        middleware: [
+          offset(6),
+          flip({ padding: 8, fallbackPlacements: ["top-start"] }),
+          shift({ padding: 8, crossAxis: true }),
+        ],
+      });
+      posX = x;
+      posY = y;
+    }
+
+    const cleanup = autoUpdate(virtualRef, menuEl, updatePos, {
+      ancestorScroll: true,
+      ancestorResize: true,
+      elementResize: false,
+      layoutShift: false,
+    });
+
+    return cleanup;
   });
 </script>
 
-{#if slash.open && slash.coords && slash.items.length > 0}
+{#if slash.open && slash.items.length > 0}
   <div
+    bind:this={menuEl}
     class="slash-menu fixed z-50 w-72 rounded-lg border border-border bg-popover shadow-xl overflow-hidden"
-    style="left:{leftPx}px; bottom:{bottomPx}px;"
+    style:top="0"
+    style:left="0"
+    style:transform="translate({posX}px, {posY}px)"
+    style:will-change="transform"
   >
     <div class="px-3 py-2 border-b border-border">
       <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Blocks</p>

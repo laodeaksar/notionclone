@@ -136,7 +136,10 @@ export interface SlashMenuState {
   open: boolean;
   items: SlashItem[];
   selectedIndex: number;
-  coords: { left: number; top: number } | null;
+  /** Raw clientRect accessor from @tiptap/suggestion — used as floating-ui virtual reference. */
+  rect: (() => DOMRect | null | undefined) | null;
+  /** The editor's ProseMirror DOM element — gives autoUpdate an ancestor to track scroll on. */
+  contextElement: Element | null;
   executeCommand: ((item: SlashItem) => void) | null;
 }
 
@@ -144,7 +147,8 @@ export const slashMenuStore = writable<SlashMenuState>({
   open: false,
   items: [],
   selectedIndex: 0,
-  coords: null,
+  rect: null,
+  contextElement: null,
   executeCommand: null,
 });
 
@@ -613,14 +617,12 @@ const SlashMenuExtension = Extension.create({
               localItems = props.items as SlashItem[];
               localCommand = props.command;
               selectedIndex = 0;
-              const rect: DOMRect | undefined = props.clientRect?.();
               slashMenuStore.set({
                 open: true,
                 items: localItems,
                 selectedIndex: 0,
-                coords: rect
-                  ? { left: rect.left, top: rect.top }
-                  : null,
+                rect: props.clientRect ?? null,
+                contextElement: editor.view.dom,
                 executeCommand: (item) => localCommand?.(item),
               });
             },
@@ -629,14 +631,11 @@ const SlashMenuExtension = Extension.create({
               localItems = props.items as SlashItem[];
               localCommand = props.command;
               selectedIndex = 0;
-              const rect: DOMRect | undefined = props.clientRect?.();
               slashMenuStore.update((s) => ({
                 ...s,
                 items: localItems,
                 selectedIndex: 0,
-                coords: rect
-                  ? { left: rect.left, top: rect.top }
-                  : s.coords,
+                rect: props.clientRect ?? s.rect,
                 executeCommand: (item) => localCommand?.(item),
               }));
             },
