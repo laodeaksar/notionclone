@@ -8,7 +8,9 @@
   import { currentWorkspaceId } from "$lib/stores/workspace.js";
   import { createPageFn, pagesKey } from "$lib/queries.js";
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
+  import { breadcrumbStore } from "$lib/stores/breadcrumb.js";
   import Sidebar from "$lib/components/Sidebar.svelte";
+  import PageBreadcrumb from "$lib/components/PageBreadcrumb.svelte";
   import CommandPalette from "$lib/components/CommandPalette.svelte";
   import OfflineIndicator from "$lib/components/OfflineIndicator.svelte";
   import MobileBottomNav from "$lib/components/MobileBottomNav.svelte";
@@ -201,6 +203,14 @@
 
     <!-- Main area -->
     <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <!-- Breadcrumb — fixed above scroll, only when a page is open -->
+      {#if $breadcrumbStore}
+        <PageBreadcrumb
+          page={$breadcrumbStore.page}
+          pages={$breadcrumbStore.pages}
+        />
+      {/if}
+
       <main bind:this={mainEl} class="flex-1 overflow-y-auto pb-24 md:pb-0">
         {@render children()}
       </main>
@@ -211,7 +221,6 @@
       onOpenMenu={() => (drawerOpen = true)}
       onOpenSearch={() => (paletteOpen = true)}
       onNewPage={handleNewPage}
-      pageMeta={$currentPageMeta}
       onScrollTop={() => mainEl?.scrollTo({ top: 0, behavior: "smooth" })}
     />
 

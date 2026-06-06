@@ -25,7 +25,7 @@
 </script>
 
 <nav
-  class="sticky top-0 z-10 bg-background/90 backdrop-blur-sm border-b border-border"
+  class="w-full bg-background/90 backdrop-blur-sm border-b border-border shrink-0"
   aria-label="Breadcrumb"
 >
   <div class="max-w-3xl mx-auto px-8 h-9 flex items-center gap-1 text-xs text-muted-foreground">
@@ -43,7 +43,8 @@
       <ChevronRight class="w-3 h-3 shrink-0 opacity-40" />
       <button
         onclick={() => goto(`/app/${ancestor.id}`)}
-        class="max-w-[140px] truncate px-1.5 py-0.5 rounded hover:bg-accent hover:text-foreground transition-colors"
+        class="max-w-[140px] truncate px-1.5 py-0.5 rounded
+               hover:bg-accent hover:text-foreground transition-colors"
       >
         {ancestor.title || "Untitled"}
       </button>
@@ -51,7 +52,7 @@
 
     <ChevronRight class="w-3 h-3 shrink-0 opacity-40" />
 
-    <!-- Current page (non-clickable) -->
+    <!-- Current page -->
     <span class="max-w-[200px] truncate px-1.5 py-0.5 text-foreground font-medium">
       {page.title || "Untitled"}
     </span>

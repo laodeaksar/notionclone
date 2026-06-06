@@ -6,8 +6,8 @@
   import { pageQueryOptions, pageKey, pagesKey, pagesQueryOptions, updatePageFn, deletePageFn } from "$lib/queries.js";
   import { currentWorkspaceId } from "$lib/stores/workspace.js";
   import { currentPageMeta } from "$lib/stores/page.js";
+  import { breadcrumbStore } from "$lib/stores/breadcrumb.js";
   import PageEditor from "$lib/components/PageEditor.svelte";
-  import PageBreadcrumb from "$lib/components/PageBreadcrumb.svelte";
 
   const qc = useQueryClient();
 
@@ -20,7 +20,7 @@
   const loading = $derived(pageQuery.isPending);
   const notFound = $derived(pageQuery.isError);
 
-  // ── All pages (for breadcrumb ancestry) — uses cached data from Sidebar ──
+  // ── All pages (for breadcrumb ancestry) ──────────────────────────────────
   const pagesQuery = createQuery(() =>
     pagesQueryOptions($currentWorkspaceId ?? "")
   );
@@ -36,14 +36,26 @@
     },
   }));
 
-  // Keep mobile top bar in sync with the open page
+  // Keep breadcrumb store + mobile meta in sync with the open page
   $effect(() => {
     if (currentPage) {
       currentPageMeta.set({ title: currentPage.title, icon: currentPage.icon });
+      breadcrumbStore.set({ page: currentPage, pages: pagesQuery.data ?? [] });
     } else {
       currentPageMeta.set(null);
+      breadcrumbStore.set(null);
     }
-    return () => currentPageMeta.set(null);
+    return () => {
+      currentPageMeta.set(null);
+      breadcrumbStore.set(null);
+    };
+  });
+
+  // Keep breadcrumb pages list up to date as pagesQuery resolves
+  $effect(() => {
+    if (currentPage && pagesQuery.data) {
+      breadcrumbStore.update((b) => (b ? { ...b, pages: pagesQuery.data! } : b));
+    }
   });
 
   function handleTitleChange(title: string) {
@@ -88,6 +100,5 @@
     Page not found
   </div>
 {:else if user}
-  <PageBreadcrumb page={currentPage} pages={pagesQuery.data ?? []} />
   <PageEditor page={currentPage} onTitleChange={handleTitleChange} onRestore={handleRestore} />
 {/if}
