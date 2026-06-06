@@ -10,6 +10,16 @@ function getInitialTheme(): Theme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
+const THEME_COLORS: Record<Theme, string> = {
+  light: "#ffffff",
+  dark:  "#0f172a",
+};
+
+function applyThemeColor(theme: Theme) {
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (meta) meta.content = THEME_COLORS[theme];
+}
+
 function createThemeStore() {
   const { subscribe, set, update } = writable<Theme>(getInitialTheme());
 
@@ -21,6 +31,7 @@ function createThemeStore() {
         if (browser) {
           localStorage.setItem("theme", next);
           document.documentElement.classList.toggle("dark", next === "dark");
+          applyThemeColor(next);
         }
         return next;
       });
@@ -30,6 +41,7 @@ function createThemeStore() {
       const theme = getInitialTheme();
       set(theme);
       document.documentElement.classList.toggle("dark", theme === "dark");
+      applyThemeColor(theme);
     },
   };
 }

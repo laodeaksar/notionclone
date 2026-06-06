@@ -25,9 +25,10 @@
       try {
         const stored = localStorage.getItem("theme");
         const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        if (stored === "dark" || (!stored && prefersDark)) {
-          document.documentElement.classList.add("dark");
-        }
+        const isDark = stored === "dark" || (!stored && prefersDark);
+        if (isDark) document.documentElement.classList.add("dark");
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.content = isDark ? "#0f172a" : "#ffffff";
       } catch {}
     </script>
     %sveltekit.head%
