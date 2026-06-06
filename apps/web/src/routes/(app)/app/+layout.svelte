@@ -142,7 +142,7 @@
   {#if $currentPageMeta}
     <title>{$currentPageMeta.icon ? `${$currentPageMeta.icon} ` : ""}{$currentPageMeta.title || "Untitled"}</title>
   {:else}
-    <title>Notion Clone</title>
+    <title>Aksar La'ode</title>
   {/if}
 </svelte:head>
 
