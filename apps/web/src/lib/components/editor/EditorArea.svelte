@@ -11,6 +11,8 @@
     editor = $bindable(null),
     imageSelected = $bindable(false),
     imageRect = $bindable(null),
+    videoSelected = $bindable(false),
+    videoRect = $bindable(null),
     onOpenContextMenu,
     onCommentClick,
     onImageFile,
@@ -20,6 +22,8 @@
     editor?: Editor | null;
     imageSelected?: boolean;
     imageRect?: { left: number; top: number; width: number; height: number } | null;
+    videoSelected?: boolean;
+    videoRect?: { left: number; top: number; width: number; height: number } | null;
     onOpenContextMenu?: (data: { x: number; y: number; blockPos: number | null }) => void;
     onCommentClick?: (commentId: string) => void;
     onImageFile?: (file: File) => Promise<ImageFileResult>;
@@ -67,6 +71,31 @@
     }
   }
 
+  function checkVideoSelection() {
+    if (!editor) return;
+    const { selection } = editor.state;
+    const ns = selection as unknown as { node?: { type: { name: string } } };
+    if (ns.node?.type.name === "videoEmbed") {
+      try {
+        const domNode = editor.view.nodeDOM(selection.from) as Element | null;
+        if (domNode) {
+          const rect = domNode.getBoundingClientRect();
+          videoRect = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+        } else {
+          const coords = editor.view.coordsAtPos(selection.from);
+          videoRect = { left: coords.left, top: coords.bottom, width: 0, height: 0 };
+        }
+        videoSelected = true;
+      } catch {
+        videoSelected = false;
+        videoRect = null;
+      }
+    } else {
+      videoSelected = false;
+      videoRect = null;
+    }
+  }
+
   function handleMouseOver(e: MouseEvent) {
     if (!editorEl) return;
     const pmEl = editorEl.querySelector(".ProseMirror");
@@ -111,6 +140,8 @@
     editor = inst;
     inst.on("selectionUpdate", checkImageSelection);
     inst.on("transaction", checkImageSelection);
+    inst.on("selectionUpdate", checkVideoSelection);
+    inst.on("transaction", checkVideoSelection);
   });
 
   onDestroy(() => {
@@ -202,6 +233,12 @@
   }
   /* Fallback for bare img nodes (legacy / clipboard) */
   :global(.ProseMirror img.ProseMirror-selectednode) {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  /* Video embed selection ring */
+  :global(.ProseMirror .video-embed.ProseMirror-selectednode) {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }

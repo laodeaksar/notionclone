@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, untrack } from "svelte";
   import { createMutation, createQuery } from "@tanstack/svelte-query";
-  import { uploadImage, slashMenuStore, type ImageFileResult } from "$lib/editor.js";
+  import { uploadImage, slashMenuStore, getVideoEmbedUrl, type ImageFileResult } from "$lib/editor.js";
   import {
     updatePageFn,
     saveVersionFn,
@@ -19,6 +19,7 @@
   import EditorToolbar from "./editor/EditorToolbar.svelte";
   import EditorArea from "./editor/EditorArea.svelte";
   import ImageBubbleMenu from "./editor/ImageBubbleMenu.svelte";
+  import VideoBubbleMenu from "./editor/VideoBubbleMenu.svelte";
   import ImageResizeHandles from "./editor/ImageResizeHandles.svelte";
   import BlockContextMenu from "./editor/BlockContextMenu.svelte";
   import SlashMenu from "./editor/SlashMenu.svelte";
@@ -45,6 +46,8 @@
   let editor = $state<Editor | null>(null);
   let imageSelected = $state(false);
   let imageRect = $state<{ left: number; top: number; width: number; height: number } | null>(null);
+  let videoSelected = $state(false);
+  let videoRect = $state<{ left: number; top: number; width: number; height: number } | null>(null);
 
   let titleValue = $state("");
   let titleTimer: ReturnType<typeof setTimeout>;
@@ -346,6 +349,19 @@
     imageRect = null;
   }
 
+  // ── Video controls ────────────────────────────────────────────────────────
+  function deleteVideo() {
+    editor?.chain().focus().deleteSelection().run();
+    videoSelected = false;
+    videoRect = null;
+  }
+
+  function replaceVideoUrl(url: string) {
+    const embedUrl = getVideoEmbedUrl(url);
+    if (!embedUrl || !editor) return;
+    editor.chain().focus().updateAttributes("videoEmbed", { src: embedUrl }).run();
+  }
+
   // ── Version save ──────────────────────────────────────────────────────────
   async function handleSaveVersion() {
     if (!editor) return;
@@ -469,6 +485,8 @@
     bind:editor
     bind:imageSelected
     bind:imageRect
+    bind:videoSelected
+    bind:videoRect
     onOpenContextMenu={openContextMenu}
     onCommentClick={handleCommentClick}
     onImageFile={handleImageFile}
@@ -480,6 +498,13 @@
   {imageRect}
   onAlign={setImageAlign}
   onDelete={deleteImage}
+/>
+
+<VideoBubbleMenu
+  visible={videoSelected}
+  {videoRect}
+  onDelete={deleteVideo}
+  onReplace={replaceVideoUrl}
 />
 
 <ImageResizeHandles
