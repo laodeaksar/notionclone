@@ -138,6 +138,14 @@
   }
 </script>
 
+<svelte:head>
+  {#if $currentPageMeta}
+    <title>{$currentPageMeta.icon ? `${$currentPageMeta.icon} ` : ""}{$currentPageMeta.title || "Untitled"}</title>
+  {:else}
+    <title>Notion Clone</title>
+  {/if}
+</svelte:head>
+
 <svelte:window
   onkeydown={handleGlobalKeydown}
   ontouchstart={onTouchStart}
