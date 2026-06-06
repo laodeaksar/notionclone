@@ -364,19 +364,19 @@
   }
   :global(.ProseMirror .callout__icon) {
     flex-shrink: 0;
-    font-size: 1.1rem;
-    line-height: 1.6;
-    cursor: text;
-    outline: none;
-    border-radius: 0.25rem;
-    padding: 0 0.15rem;
-    min-width: 1.4rem;
-    text-align: center;
-    transition: background-color 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: 0.175rem;
+    color: hsl(var(--muted-foreground));
   }
-  :global(.ProseMirror .callout__icon:focus) {
-    background: hsl(var(--muted));
-  }
+  :global(.ProseMirror .callout__icon svg) { stroke: currentColor; }
+  :global(.ProseMirror .callout--info    .callout__icon) { color: rgb(59, 130, 246); }
+  :global(.ProseMirror .callout--warning .callout__icon) { color: rgb(202, 138, 4); }
+  :global(.ProseMirror .callout--success .callout__icon) { color: rgb(22, 163, 74); }
+  :global(.ProseMirror .callout--error   .callout__icon) { color: rgb(220, 38, 38); }
   :global(.ProseMirror .callout__content) {
     flex: 1;
     min-width: 0;

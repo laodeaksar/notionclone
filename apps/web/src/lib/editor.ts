@@ -87,7 +87,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   {
     title: "Callout",
     description: "Highlighted note block",
-    icon: "emoji:💡",
+    icon: "lightbulb",
     command: (e) =>
       e.chain().focus().insertContent({
         type: "callout",
@@ -98,7 +98,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   {
     title: "Info",
     description: "Informational callout",
-    icon: "emoji:ℹ️",
+    icon: "info",
     command: (e) =>
       e.chain().focus().insertContent({
         type: "callout",
@@ -109,7 +109,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   {
     title: "Warning",
     description: "Warning callout",
-    icon: "emoji:⚠️",
+    icon: "alert-triangle",
     command: (e) =>
       e.chain().focus().insertContent({
         type: "callout",
@@ -120,7 +120,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   {
     title: "Success",
     description: "Success callout",
-    icon: "emoji:✅",
+    icon: "check-circle",
     command: (e) =>
       e.chain().focus().insertContent({
         type: "callout",
@@ -469,13 +469,18 @@ export const CustomBlockquote = Blockquote.extend({
 
 // ── Callout block ─────────────────────────────────────────────────────────────
 
-const CALLOUT_DEFAULTS: Record<string, string> = {
-  default: "💡",
-  info:    "ℹ️",
-  warning: "⚠️",
-  success: "✅",
-  error:   "🚨",
+const CALLOUT_SVG_PATHS: Record<string, string> = {
+  default: `<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>`,
+  info:    `<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>`,
+  warning: `<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>`,
+  success: `<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>`,
+  error:   `<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>`,
 };
+
+function makeCalloutSVG(variant: string): string {
+  const paths = CALLOUT_SVG_PATHS[variant] ?? CALLOUT_SVG_PATHS.default;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+}
 
 export const CalloutExtension = Node.create({
   name: "callout",
@@ -490,12 +495,6 @@ export const CalloutExtension = Node.create({
         parseHTML: (el) => el.getAttribute("data-callout-variant") ?? "default",
         renderHTML: (attrs) => ({ "data-callout-variant": attrs.variant }),
       },
-      icon: {
-        default: null,
-        parseHTML: (el) => el.getAttribute("data-callout-icon") ?? null,
-        renderHTML: (attrs) =>
-          attrs.icon ? { "data-callout-icon": attrs.icon as string } : {},
-      },
     };
   },
 
@@ -508,21 +507,15 @@ export const CalloutExtension = Node.create({
   },
 
   addNodeView() {
-    return ({ node, getPos, editor: ed }) => {
-      let currentAttrs = { ...node.attrs };
+    return ({ node }) => {
+      let variant = (node.attrs.variant as string) ?? "default";
 
       const wrapper = document.createElement("div");
-      wrapper.className = `callout callout--${currentAttrs.variant ?? "default"}`;
+      wrapper.className = `callout callout--${variant}`;
 
       const iconEl = document.createElement("span");
-      iconEl.contentEditable = "true";
       iconEl.className = "callout__icon";
-      iconEl.title = "Click to change emoji";
-      const resolvedIcon =
-        (currentAttrs.icon as string | null) ||
-        CALLOUT_DEFAULTS[(currentAttrs.variant as string) ?? "default"] ||
-        "💡";
-      iconEl.textContent = resolvedIcon;
+      iconEl.innerHTML = makeCalloutSVG(variant);
 
       const contentEl = document.createElement("div");
       contentEl.className = "callout__content";
@@ -530,49 +523,16 @@ export const CalloutExtension = Node.create({
       wrapper.appendChild(iconEl);
       wrapper.appendChild(contentEl);
 
-      iconEl.addEventListener("input", () => {
-        const pos = typeof getPos === "function" ? getPos() : undefined;
-        if (pos === undefined) return;
-        const { tr } = ed.state;
-        tr.setNodeMarkup(pos, undefined, {
-          ...currentAttrs,
-          icon: iconEl.textContent ?? "",
-        });
-        ed.view.dispatch(tr);
-      });
-
-      iconEl.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === "Escape") {
-          iconEl.blur();
-          e.preventDefault();
-        }
-        e.stopPropagation();
-      });
-
       return {
         dom: wrapper,
         contentDOM: contentEl,
 
         update(updatedNode) {
           if (updatedNode.type.name !== "callout") return false;
-          currentAttrs = { ...updatedNode.attrs };
-          const v = (currentAttrs.variant as string) ?? "default";
-          wrapper.className = `callout callout--${v}`;
-          if (!iconEl.matches(":focus")) {
-            iconEl.textContent =
-              (currentAttrs.icon as string | null) ||
-              CALLOUT_DEFAULTS[v] ||
-              "💡";
-          }
+          variant = (updatedNode.attrs.variant as string) ?? "default";
+          wrapper.className = `callout callout--${variant}`;
+          iconEl.innerHTML = makeCalloutSVG(variant);
           return true;
-        },
-
-        stopEvent(event) {
-          return iconEl.contains(event.target as Node);
-        },
-
-        ignoreMutation(mutation) {
-          return iconEl.contains(mutation.target as Node);
         },
       };
     };
