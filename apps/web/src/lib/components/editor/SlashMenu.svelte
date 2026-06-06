@@ -82,7 +82,7 @@
 {#if slash.open && slash.items.length > 0}
   <div
     bind:this={menuEl}
-    class="slash-menu fixed z-50 w-72 rounded-lg border border-border bg-popover shadow-xl overflow-hidden"
+    class="slash-menu fixed z-[300] w-72 rounded-lg border border-border bg-popover shadow-xl overflow-hidden"
     style:top="0"
     style:left="0"
     style:transform="translate({posX}px, {posY}px)"

@@ -24,6 +24,7 @@
   let linkMode = $state(false);
   let linkValue = $state("");
   let linkInputEl = $state<HTMLInputElement | null>(null);
+  let commentActive = $state(false);
 
   let isBold = $state(false);
   let isItalic = $state(false);
@@ -172,8 +173,10 @@
       visible = false;
       linkMode = false;
       turnIntoOpen = false;
+      commentActive = false;
       return;
     }
+    if (commentActive) return;
     const ns = selection as unknown as { node?: { type: { name: string } } };
     if (ns.node?.type.name === "image") {
       visible = false;
@@ -227,6 +230,7 @@
   }
 
   function handleComment() {
+    commentActive = true;
     visible = false;
     linkMode = false;
     turnIntoOpen = false;
