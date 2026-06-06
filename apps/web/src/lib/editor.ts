@@ -18,6 +18,7 @@ export interface SlashItem {
   description: string;
   icon: string;
   shortcut?: string;
+  inputMode?: "url";
   command: (editor: Editor) => void;
 }
 
@@ -109,6 +110,13 @@ export const SLASH_ITEMS: SlashItem[] = [
     },
   },
   {
+    title: "Image from URL",
+    description: "Embed an image from a web link",
+    icon: "image-link",
+    inputMode: "url",
+    command: () => {},
+  },
+  {
     title: "Callout",
     description: "Highlighted note block",
     icon: "lightbulb",
@@ -165,6 +173,9 @@ export interface SlashMenuState {
   /** The editor's ProseMirror DOM element — gives autoUpdate an ancestor to track scroll on. */
   contextElement: Element | null;
   executeCommand: ((item: SlashItem) => void) | null;
+  /** When true, the menu shows a URL input field instead of the items list. */
+  urlInputMode: boolean;
+  onUrlSubmit: ((url: string) => void) | null;
 }
 
 export const slashMenuStore = writable<SlashMenuState>({
@@ -174,6 +185,8 @@ export const slashMenuStore = writable<SlashMenuState>({
   rect: null,
   contextElement: null,
   executeCommand: null,
+  urlInputMode: false,
+  onUrlSubmit: null,
 });
 
 // ── Comment Mark extension ────────────────────────────────────────────────────
@@ -597,6 +610,27 @@ const SlashMenuExtension = Extension.create({
           range: { from: number; to: number };
           props: SlashItem;
         }) => {
+          if (props.inputMode === "url") {
+            ed.chain().focus().deleteRange(range).run();
+            slashMenuStore.update((s) => ({
+              ...s,
+              urlInputMode: true,
+              onUrlSubmit: (url: string) => {
+                const trimmed = url.trim();
+                if (!trimmed) {
+                  slashMenuStore.update((st) => ({ ...st, open: false, urlInputMode: false, onUrlSubmit: null }));
+                  return;
+                }
+                const src = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+                ed.chain().focus().insertContent({
+                  type: "image",
+                  attrs: { src, align: "center" },
+                }).run();
+                slashMenuStore.update((st) => ({ ...st, open: false, urlInputMode: false, onUrlSubmit: null }));
+              },
+            }));
+            return;
+          }
           ed.chain().focus().deleteRange(range).run();
           props.command(ed);
         },
