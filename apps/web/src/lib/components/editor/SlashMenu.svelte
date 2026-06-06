@@ -6,6 +6,7 @@
     Pilcrow, List, ListOrdered,
     Code2, Quote, Minus,
     Lightbulb, Info, AlertTriangle, CheckCircle,
+    ImageIcon,
   } from "lucide-svelte";
   import type { Component } from "svelte";
 
@@ -26,6 +27,7 @@
     "code-2": Code2,
     "quote": Quote,
     "minus": Minus,
+    "image": ImageIcon,
     "lightbulb": Lightbulb,
     "info": Info,
     "alert-triangle": AlertTriangle,

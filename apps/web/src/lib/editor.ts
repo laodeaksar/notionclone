@@ -85,6 +85,30 @@ export const SLASH_ITEMS: SlashItem[] = [
     command: (e) => e.chain().focus().setHorizontalRule().run(),
   },
   {
+    title: "Image",
+    description: "Upload an image from your computer",
+    icon: "image",
+    command: (ed) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/png,image/jpeg,image/gif,image/webp";
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        try {
+          const url = await uploadImage(file);
+          ed.chain().focus().insertContent({
+            type: "image",
+            attrs: { src: url, align: "center" },
+          }).run();
+        } catch (err) {
+          console.error("Image upload failed", err);
+        }
+      };
+      input.click();
+    },
+  },
+  {
     title: "Callout",
     description: "Highlighted note block",
     icon: "lightbulb",
