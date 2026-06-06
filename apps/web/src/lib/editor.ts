@@ -419,14 +419,17 @@ export const CustomBlockquote = Blockquote.extend({
       function commitAuthor() {
         const pos = typeof getPos === "function" ? getPos() : undefined;
         if (pos === undefined) return;
-        // Read fresh attrs directly from the doc to avoid stale closure
-        const nodeAtPos = ed.state.doc.nodeAt(pos);
-        if (!nodeAtPos) return;
-        const author = cite.innerText.replace(/\n/g, " ").trim();
-        if (nodeAtPos.attrs.author === author) return; // no-op
-        const tr = ed.state.tr;
-        tr.setNodeMarkup(pos, undefined, { ...nodeAtPos.attrs, author });
-        ed.view.dispatch(tr);
+        const author = (cite.innerText || cite.textContent || "")
+          .replace(/\n/g, " ")
+          .trim();
+        // Go through Tiptap command pipeline so onUpdate fires reliably
+        ed.commands.command(({ tr, state }) => {
+          const node = state.doc.nodeAt(pos);
+          if (!node || node.type.name !== "blockquote") return false;
+          if (node.attrs.author === author) return false;
+          tr.setNodeMarkup(pos, undefined, { ...node.attrs, author });
+          return true;
+        });
       }
 
       cite.addEventListener("input", commitAuthor);

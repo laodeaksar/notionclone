@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { fade, scale } from "svelte/transition";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { authClient, useSession } from "$lib/auth-client.js";
@@ -20,66 +21,42 @@
   let drawerOpen = $state(false);
   let mainEl = $state<HTMLElement | null>(null);
 
-  // ── Swipe gesture ──────────────────────────────────────────────────────────
-  const EDGE_ZONE   = 24;   // px from left edge that starts an open-swipe
-  const THRESHOLD   = 60;   // px of horizontal travel to commit open/close
-  const SIDEBAR_W   = 256;  // matches w-64 = 16rem = 256px
+  // ── Swipe gesture (trigger only — no live drag animation) ─────────────────
+  const EDGE_ZONE = 24;  // px from left edge that starts an open-swipe
+  const THRESHOLD = 60;  // px of horizontal travel to commit open/close
 
-  let touchStartX  = 0;
-  let touchStartY  = 0;
-  let dragging     = $state(false);
-  let dragOffsetX  = $state(0); // live offset applied while finger moves
-  let sidebarEl    = $state<HTMLElement | null>(null);
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let swipeIsHorizontal = false;
 
   function onTouchStart(e: TouchEvent) {
-    const t = e.touches[0];
-    touchStartX = t.clientX;
-    touchStartY = t.clientY;
-    dragging = false;
-    dragOffsetX = 0;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    swipeIsHorizontal = false;
   }
 
   function onTouchMove(e: TouchEvent) {
-    const t = e.touches[0];
-    const dx = t.clientX - touchStartX;
-    const dy = t.clientY - touchStartY;
-
-    // Only handle clearly horizontal swipes
-    if (Math.abs(dx) < Math.abs(dy)) return;
-
-    if (!drawerOpen && touchStartX <= EDGE_ZONE && dx > 0) {
-      // Opening swipe: clamp between 0 and SIDEBAR_W
-      dragging = true;
-      dragOffsetX = Math.min(dx, SIDEBAR_W);
-      e.preventDefault();
-    } else if (drawerOpen && dx < 0) {
-      // Closing swipe: clamp between -SIDEBAR_W and 0
-      dragging = true;
-      dragOffsetX = Math.max(dx, -SIDEBAR_W);
-      e.preventDefault();
+    const dx = e.touches[0].clientX - touchStartX;
+    const dy = e.touches[0].clientY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      swipeIsHorizontal = true;
+      // Prevent scroll during intentional horizontal swipe
+      if ((!drawerOpen && touchStartX <= EDGE_ZONE) || drawerOpen) {
+        e.preventDefault();
+      }
     }
   }
 
   function onTouchEnd(e: TouchEvent) {
-    if (!dragging) return;
+    if (!swipeIsHorizontal) return;
     const dx = e.changedTouches[0].clientX - touchStartX;
-
-    if (!drawerOpen && dx >= THRESHOLD) {
+    if (!drawerOpen && touchStartX <= EDGE_ZONE && dx >= THRESHOLD) {
       drawerOpen = true;
     } else if (drawerOpen && dx <= -THRESHOLD) {
       drawerOpen = false;
     }
-
-    dragging = false;
-    dragOffsetX = 0;
+    swipeIsHorizontal = false;
   }
-
-  // Compute live sidebar transform: base position + drag delta
-  const sidebarTransform = $derived(() => {
-    const base = drawerOpen ? 0 : -SIDEBAR_W;
-    if (!dragging) return `translateX(${base}px)`;
-    return `translateX(${Math.min(0, Math.max(-SIDEBAR_W, base + dragOffsetX))}px)`;
-  });
 
   const session = useSession();
 
@@ -170,35 +147,30 @@
 
 <div class="flex h-screen overflow-hidden bg-background">
   {#if ready}
-    <!-- Mobile backdrop: visible when open or being dragged open -->
-    {#if drawerOpen || dragging}
+    <!-- Mobile: backdrop + centered sidebar panel -->
+    {#if drawerOpen}
       <div
-        class="fixed inset-0 z-30 md:hidden"
-        style:background-color="rgba(0,0,0,{dragging
-          ? Math.min(0.4, (dragOffsetX / SIDEBAR_W) * 0.4)
-          : 0.4})"
-        style:backdrop-filter={drawerOpen && !dragging ? 'blur(1px)' : 'none'}
+        transition:fade={{ duration: 150 }}
+        class="fixed inset-0 z-[55] md:hidden bg-black/40"
         role="button"
         tabindex="-1"
         aria-label="Close menu"
         onclick={() => (drawerOpen = false)}
         onkeydown={(e) => e.key === "Escape" && (drawerOpen = false)}
       ></div>
+      <div class="fixed inset-0 z-[60] md:hidden flex items-center justify-center pointer-events-none">
+        <div
+          transition:scale={{ duration: 150, start: 0.95 }}
+          class="pointer-events-auto"
+        >
+          <Sidebar onClose={() => (drawerOpen = false)} />
+        </div>
+      </div>
     {/if}
 
-    <!-- Sidebar: always static on md+, floating drawer on mobile -->
-    <div
-      class="fixed top-0 left-0 z-[60] bottom-[96px]
-             md:bottom-auto md:relative md:z-auto md:translate-x-0
-             will-change-transform"
-      class:transition-transform={!dragging}
-      class:duration-200={!dragging}
-      class:ease-out={!dragging}
-      style:transform={dragging ? sidebarTransform() : undefined}
-      class:-translate-x-full={!drawerOpen && !dragging}
-      class:translate-x-0={drawerOpen && !dragging}
-    >
-      <Sidebar onClose={() => (drawerOpen = false)} />
+    <!-- Desktop: sidebar always in flex flow -->
+    <div class="hidden md:block flex-none">
+      <Sidebar />
     </div>
 
     <!-- Main area -->

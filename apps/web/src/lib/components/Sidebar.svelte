@@ -82,12 +82,12 @@
 </script>
 
 <aside
-  class="h-full border-r border-border bg-background/95 backdrop-blur-md flex flex-col overflow-hidden
-         shadow-2xl rounded-r-2xl
-         md:shadow-none md:rounded-none md:bg-background
-         transition-all duration-200"
-  class:w-64={!collapsed}
-  class:w-12={collapsed}
+  class="flex flex-col overflow-hidden transition-all duration-200
+         border border-border bg-background/95 backdrop-blur-md shadow-2xl rounded-2xl
+         w-[88vw] max-w-[300px] h-[72vh] max-h-[580px]
+         md:max-w-none md:h-full md:max-h-none md:rounded-none md:shadow-none
+         md:border-0 md:border-r md:bg-background
+         {collapsed ? 'md:w-12' : 'md:w-64'}"
 >
   <!-- Header -->
   <div class="flex items-center gap-1 px-2 py-2.5 border-b border-border min-w-0">

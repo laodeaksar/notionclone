@@ -308,28 +308,32 @@
   :global(.ProseMirror figure.blockquote-figure cite:focus) {
     background-color: hsl(var(--muted) / 0.45);
   }
-  /* Placeholder — visible at low opacity always, brighter on focus */
+  /* Placeholder — hidden by default, visible only on figure hover or cite focus */
   :global(.ProseMirror figure.blockquote-figure cite:empty::after) {
     content: attr(data-placeholder);
-    color: hsl(var(--muted-foreground) / 0.35);
+    color: transparent;
     font-weight: 400;
     font-style: italic;
     pointer-events: none;
-  }
-  :global(.ProseMirror figure.blockquote-figure cite:empty:focus::after) {
-    color: hsl(var(--muted-foreground) / 0.6);
+    transition: color 0.15s;
   }
   :global(.ProseMirror figure.blockquote-figure cite:empty::before) {
-    opacity: 0.2;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  /* Reveal on figure hover */
+  :global(.ProseMirror figure.blockquote-figure:hover cite:empty::after) {
+    color: hsl(var(--muted-foreground) / 0.4);
+  }
+  :global(.ProseMirror figure.blockquote-figure:hover cite:empty::before) {
+    opacity: 0.25;
+  }
+  /* Brighter when cite is focused */
+  :global(.ProseMirror figure.blockquote-figure cite:empty:focus::after) {
+    color: hsl(var(--muted-foreground) / 0.65);
   }
   :global(.ProseMirror figure.blockquote-figure cite:empty:focus::before) {
     opacity: 0.5;
-  }
-  :global(.ProseMirror figure.blockquote-figure cite:empty:not(:focus):hover::after) {
-    color: hsl(var(--muted-foreground) / 0.5);
-  }
-  :global(.ProseMirror figure.blockquote-figure cite:empty:not(:focus):hover::before) {
-    opacity: 0.35;
   }
   /* ── Callout blocks ──────────────────────────────────────── */
   :global(.ProseMirror .callout) {
