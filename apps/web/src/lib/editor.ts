@@ -416,18 +416,25 @@ export const CustomBlockquote = Blockquote.extend({
       figure.appendChild(bq);
       figure.appendChild(cite);
 
-      cite.addEventListener("input", () => {
+      function commitAuthor() {
         const pos = typeof getPos === "function" ? getPos() : undefined;
         if (pos === undefined) return;
-        const { tr } = ed.state;
-        tr.setNodeMarkup(pos, undefined, {
-          ...currentAttrs,
-          author: cite.textContent ?? "",
-        });
+        // Read fresh attrs directly from the doc to avoid stale closure
+        const nodeAtPos = ed.state.doc.nodeAt(pos);
+        if (!nodeAtPos) return;
+        const author = cite.innerText.replace(/\n/g, " ").trim();
+        if (nodeAtPos.attrs.author === author) return; // no-op
+        const tr = ed.state.tr;
+        tr.setNodeMarkup(pos, undefined, { ...nodeAtPos.attrs, author });
         ed.view.dispatch(tr);
-      });
+      }
+
+      cite.addEventListener("input", commitAuthor);
+      cite.addEventListener("blur", commitAuthor);
 
       cite.addEventListener("keydown", (e) => {
+        // Prevent newlines inside the author field
+        if (e.key === "Enter") { e.preventDefault(); cite.blur(); }
         if (e.key === "Escape") cite.blur();
         e.stopPropagation();
       });

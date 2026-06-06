@@ -308,21 +308,28 @@
   :global(.ProseMirror figure.blockquote-figure cite:focus) {
     background-color: hsl(var(--muted) / 0.45);
   }
-  /* Placeholder — only when empty AND focused */
+  /* Placeholder — visible at low opacity always, brighter on focus */
   :global(.ProseMirror figure.blockquote-figure cite:empty::after) {
     content: attr(data-placeholder);
-    color: hsl(var(--muted-foreground) / 0.4);
+    color: hsl(var(--muted-foreground) / 0.35);
     font-weight: 400;
+    font-style: italic;
     pointer-events: none;
   }
-  :global(.ProseMirror figure.blockquote-figure cite:empty:not(:focus)::after) {
-    opacity: 0;
+  :global(.ProseMirror figure.blockquote-figure cite:empty:focus::after) {
+    color: hsl(var(--muted-foreground) / 0.6);
   }
   :global(.ProseMirror figure.blockquote-figure cite:empty::before) {
-    opacity: 0;
+    opacity: 0.2;
   }
   :global(.ProseMirror figure.blockquote-figure cite:empty:focus::before) {
     opacity: 0.5;
+  }
+  :global(.ProseMirror figure.blockquote-figure cite:empty:not(:focus):hover::after) {
+    color: hsl(var(--muted-foreground) / 0.5);
+  }
+  :global(.ProseMirror figure.blockquote-figure cite:empty:not(:focus):hover::before) {
+    opacity: 0.35;
   }
   /* ── Callout blocks ──────────────────────────────────────── */
   :global(.ProseMirror .callout) {
