@@ -59,4 +59,17 @@ Middlewares: `offset(6)` → `flip({ padding: 8, fallbackPlacements: ["top-start
 CSS: `position: fixed; top: 0; left: 0; transform: translate({x}px, {y}px); will-change: transform`
 — do NOT use `top`/`left` pixel values from floating-ui directly (use transform for compositor perf)
 
-**How to apply:** Follow this same pattern for any other floating Svelte menus (context menus, tooltips) that need to float relative to a caret/virtual position in a Tiptap editor.
+**How to apply:** Follow this same pattern for any other floating Svelte menus that need to float relative to a virtual position.
+
+## All components migrated to @floating-ui/dom
+- `SlashMenu.svelte` — virtual element from `clientRect` fn stored in store; `autoUpdate`; `bottom-start` + flip/shift
+- `FloatingToolbar.svelte` — virtual element from `window.getSelection().getRangeAt(0).getBoundingClientRect()`; `top` placement + flip/shift; `elementResize:true` for link mode height change
+- `ImageBubbleMenu.svelte` — virtual element built from `imageRect` prop (`new DOMRect(...)`); `bottom` + flip/shift; prop changed from `position:{left,top}` to `imageRect:{left,top,width,height}`
+- `BlockContextMenu.svelte` — virtual element from click coords `new DOMRect(x, y, 0, 0)`; `computePosition` once (no autoUpdate needed); `bottom-start` + flip/shift
+
+## NOT migrated (intentionally)
+- `ImageResizeHandles.svelte` — resize handles need pixel-exact placement at image corners, floating-ui flip/shift would break UX
+- `EditorArea.svelte` drag handle — same, pixel-exact hover placement
+
+## Interface change: EditorArea imageBubble removed
+`imageBubble` bindable prop removed from `EditorArea`; `ImageBubbleMenu` now receives `imageRect` directly; `PageEditor` no longer stores `imageBubble` state.

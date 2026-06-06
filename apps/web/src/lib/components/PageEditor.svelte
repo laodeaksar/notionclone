@@ -44,7 +44,6 @@
   // ── State ──────────────────────────────────────────────────────────────────
   let editor = $state<Editor | null>(null);
   let imageSelected = $state(false);
-  let imageBubble = $state<{ left: number; top: number } | null>(null);
   let imageRect = $state<{ left: number; top: number; width: number; height: number } | null>(null);
 
   let titleValue = $state("");
@@ -344,7 +343,6 @@
   function deleteImage() {
     editor?.chain().focus().deleteSelection().run();
     imageSelected = false;
-    imageBubble = null;
     imageRect = null;
   }
 
@@ -470,7 +468,6 @@
     onUpdate={scheduleContentSave}
     bind:editor
     bind:imageSelected
-    bind:imageBubble
     bind:imageRect
     onOpenContextMenu={openContextMenu}
     onCommentClick={handleCommentClick}
@@ -480,7 +477,7 @@
 
 <ImageBubbleMenu
   visible={imageSelected}
-  position={imageBubble}
+  {imageRect}
   onAlign={setImageAlign}
   onDelete={deleteImage}
 />

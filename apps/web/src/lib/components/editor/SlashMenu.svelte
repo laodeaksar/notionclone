@@ -14,7 +14,8 @@
     slash: SlashMenuState;
   } = $props();
 
-  const iconMap: Record<string, Component> = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const iconMap: Record<string, Component<any>> = {
     "heading-1": Heading1,
     "heading-2": Heading2,
     "heading-3": Heading3,

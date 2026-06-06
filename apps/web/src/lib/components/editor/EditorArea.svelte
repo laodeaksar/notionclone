@@ -10,7 +10,6 @@
     onUpdate,
     editor = $bindable(null),
     imageSelected = $bindable(false),
-    imageBubble = $bindable(null),
     imageRect = $bindable(null),
     onOpenContextMenu,
     onCommentClick,
@@ -20,7 +19,6 @@
     onUpdate: (json: string) => void;
     editor?: Editor | null;
     imageSelected?: boolean;
-    imageBubble?: { left: number; top: number } | null;
     imageRect?: { left: number; top: number; width: number; height: number } | null;
     onOpenContextMenu?: (data: { x: number; y: number; blockPos: number | null }) => void;
     onCommentClick?: (commentId: string) => void;
@@ -48,10 +46,6 @@
               ? domNode
               : (domNode.querySelector("img") ?? domNode);
           const rect = imgEl.getBoundingClientRect();
-          imageBubble = {
-            left: Math.max(4, rect.left + rect.width / 2 - 96),
-            top: rect.bottom + 8,
-          };
           imageRect = {
             left: rect.left,
             top: rect.top,
@@ -60,8 +54,7 @@
           };
         } else {
           const coords = editor.view.coordsAtPos(selection.from);
-          imageBubble = { left: coords.left, top: coords.bottom + 8 };
-          imageRect = null;
+          imageRect = { left: coords.left, top: coords.bottom, width: 0, height: 0 };
         }
         imageSelected = true;
       } catch {
@@ -130,7 +123,7 @@
   role="region"
   aria-label="Document editor"
   onmouseover={handleMouseOver}
-  onfocus={handleMouseOver}
+  onfocus={() => {}}
   onmouseleave={handleMouseLeave}
 >
   {#if dragVisible}

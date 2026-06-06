@@ -170,6 +170,8 @@
 {#if visible}
   <div
     bind:this={toolbarEl}
+    role="toolbar"
+    aria-label="Text formatting"
     class="floating-toolbar fixed z-40 flex items-center gap-0.5 rounded-lg border border-border bg-popover shadow-xl px-1.5 py-1"
     style:top="0"
     style:left="0"

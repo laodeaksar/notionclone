@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { computePosition, flip, shift, offset, autoUpdate } from "@floating-ui/dom";
   import {
     AlignStartVertical,
     AlignCenterVertical,
@@ -9,12 +10,12 @@
 
   let {
     visible = false,
-    position = null,
+    imageRect = null,
     onAlign,
     onDelete,
   }: {
     visible?: boolean;
-    position?: { left: number; top: number } | null;
+    imageRect?: { left: number; top: number; width: number; height: number } | null;
     onAlign: (align: string) => void;
     onDelete: () => void;
   } = $props();
@@ -25,12 +26,55 @@
     { value: "right",      label: "Align right",  Icon: AlignEndVertical },
     { value: "full-width", label: "Full width",   Icon: AlignVerticalJustifyCenter },
   ] as const;
+
+  let menuEl = $state<HTMLDivElement | undefined>();
+  let posX = $state(0);
+  let posY = $state(0);
+
+  $effect(() => {
+    if (!visible || !imageRect || !menuEl) return;
+
+    const r = imageRect;
+    const virtualRef = {
+      getBoundingClientRect: () =>
+        new DOMRect(r.left, r.top, r.width, r.height),
+    };
+
+    const el = menuEl;
+
+    async function update() {
+      if (!el) return;
+      const { x, y } = await computePosition(virtualRef, el, {
+        placement: "bottom",
+        middleware: [
+          offset(8),
+          flip({ padding: 8, fallbackPlacements: ["top"] }),
+          shift({ padding: 8 }),
+        ],
+      });
+      posX = x;
+      posY = y;
+    }
+
+    const cleanup = autoUpdate(virtualRef, el, update, {
+      ancestorScroll: true,
+      ancestorResize: true,
+      elementResize: false,
+      layoutShift: false,
+    });
+
+    return cleanup;
+  });
 </script>
 
-{#if visible && position}
+{#if visible && imageRect}
   <div
+    bind:this={menuEl}
     class="fixed z-50 flex items-center gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-md"
-    style="left:{position.left}px;top:{position.top}px;"
+    style:top="0"
+    style:left="0"
+    style:transform="translate({posX}px, {posY}px)"
+    style:will-change="transform"
   >
     {#each alignButtons as btn (btn.value)}
       <button
