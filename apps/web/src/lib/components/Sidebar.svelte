@@ -83,10 +83,8 @@
 
 <aside
   class="flex flex-col overflow-hidden transition-all duration-200
-         border border-border bg-background/95 backdrop-blur-md shadow-2xl rounded-2xl
-         w-[88vw] max-w-[300px] h-[72vh] max-h-[580px]
-         md:max-w-none md:h-full md:max-h-none md:rounded-none md:shadow-none
-         md:border-0 md:border-r md:bg-background
+         h-full bg-background
+         md:border-r md:border-border
          {collapsed ? 'md:w-12' : 'md:w-64'}"
 >
   <!-- Header -->

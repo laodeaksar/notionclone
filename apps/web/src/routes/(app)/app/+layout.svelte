@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { fade, scale } from "svelte/transition";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { authClient, useSession } from "$lib/auth-client.js";
@@ -10,6 +9,7 @@
   import { createPageFn, pagesKey } from "$lib/queries.js";
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { breadcrumbStore } from "$lib/stores/breadcrumb.js";
+  import { Drawer } from "@notion-clone/ui";
   import Sidebar from "$lib/components/Sidebar.svelte";
   import PageBreadcrumb from "$lib/components/PageBreadcrumb.svelte";
   import CommandPalette from "$lib/components/CommandPalette.svelte";
@@ -21,9 +21,9 @@
   let drawerOpen = $state(false);
   let mainEl = $state<HTMLElement | null>(null);
 
-  // ── Swipe gesture (trigger only — no live drag animation) ─────────────────
-  const EDGE_ZONE = 24;  // px from left edge that starts an open-swipe
-  const THRESHOLD = 60;  // px of horizontal travel to commit open/close
+  // ── Swipe-from-edge to open (vaul handles swipe-to-close natively) ────────
+  const EDGE_ZONE = 24;
+  const THRESHOLD = 60;
 
   let touchStartX = 0;
   let touchStartY = 0;
@@ -40,8 +40,7 @@
     const dy = e.touches[0].clientY - touchStartY;
     if (Math.abs(dx) > Math.abs(dy)) {
       swipeIsHorizontal = true;
-      // Prevent scroll during intentional horizontal swipe
-      if ((!drawerOpen && touchStartX <= EDGE_ZONE) || drawerOpen) {
+      if (!drawerOpen && touchStartX <= EDGE_ZONE) {
         e.preventDefault();
       }
     }
@@ -52,8 +51,6 @@
     const dx = e.changedTouches[0].clientX - touchStartX;
     if (!drawerOpen && touchStartX <= EDGE_ZONE && dx >= THRESHOLD) {
       drawerOpen = true;
-    } else if (drawerOpen && dx <= -THRESHOLD) {
-      drawerOpen = false;
     }
     swipeIsHorizontal = false;
   }
@@ -96,7 +93,7 @@
     prevOnline = online;
   });
 
-  // Close drawer whenever the route changes (user tapped a page link)
+  // Close drawer on route change
   $effect(() => {
     $page.url.pathname;
     drawerOpen = false;
@@ -155,26 +152,17 @@
 
 <div class="flex h-screen overflow-hidden bg-background">
   {#if ready}
-    <!-- Mobile: backdrop + centered sidebar panel -->
-    {#if drawerOpen}
-      <div
-        transition:fade={{ duration: 150 }}
-        class="fixed inset-0 z-[55] md:hidden bg-black/40"
-        role="button"
-        tabindex="-1"
-        aria-label="Close menu"
-        onclick={() => (drawerOpen = false)}
-        onkeydown={(e) => e.key === "Escape" && (drawerOpen = false)}
-      ></div>
-      <div class="fixed inset-0 z-[60] md:hidden flex items-center justify-center pointer-events-none">
-        <div
-          transition:scale={{ duration: 150, start: 0.95 }}
-          class="pointer-events-auto"
+    <!-- Mobile: vaul drawer from left -->
+    <div class="md:hidden">
+      <Drawer.Root direction="left" bind:open={drawerOpen}>
+        <Drawer.Content
+          class="fixed inset-y-0 left-0 z-[60] flex h-full w-[88vw] max-w-[300px] flex-col
+                 bg-background border-r border-border shadow-2xl outline-none"
         >
           <Sidebar onClose={() => (drawerOpen = false)} />
-        </div>
-      </div>
-    {/if}
+        </Drawer.Content>
+      </Drawer.Root>
+    </div>
 
     <!-- Desktop: sidebar always in flex flow -->
     <div class="hidden md:block flex-none">
@@ -183,7 +171,6 @@
 
     <!-- Main area -->
     <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
-      <!-- Breadcrumb — fixed above scroll, only when a page is open -->
       {#if $breadcrumbStore}
         <PageBreadcrumb
           page={$breadcrumbStore.page}
