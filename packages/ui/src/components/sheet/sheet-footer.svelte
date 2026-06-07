@@ -7,17 +7,14 @@
 		class: className,
 		children,
 		...restProps
-	}: WithElementRef<HTMLAttributes<HTMLElement>> = $props();
+	}: WithElementRef<HTMLAttributes<HTMLDivElement>> = $props();
 </script>
 
-<kbd
+<div
 	bind:this={ref}
-	data-slot="kbd"
-	class={cn(
-		"cn-kbd pointer-events-none inline-flex items-center justify-center select-none",
-		className
-	)}
+	data-slot="sheet-footer"
+	class={cn("cn-sheet-footer mt-auto flex flex-col", className)}
 	{...restProps}
 >
 	{@render children?.()}
-</kbd>
+</div>
