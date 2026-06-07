@@ -170,6 +170,26 @@ export type PageUpdateInput = v.InferInput<typeof PageUpdateSchema>;
 export type PageReorderInput = v.InferInput<typeof PageReorderSchema>;
 export type PageVersionSaveInput = v.InferInput<typeof PageVersionSaveSchema>;
 
+// ── Comment schemas ───────────────────────────────────────────────────────────
+
+export const CommentCreateSchema = v.object({
+  content: v.pipe(v.string(), v.minLength(1)),
+  quote: v.optional(v.string()),
+});
+
+export const CommentReplyCreateSchema = v.object({
+  content: v.pipe(v.string(), v.minLength(1)),
+});
+
+export const CommentUpdateSchema = v.object({
+  content: v.optional(v.pipe(v.string(), v.minLength(1))),
+  resolved: v.optional(v.boolean()),
+});
+
+export type CommentCreateInput = v.InferInput<typeof CommentCreateSchema>;
+export type CommentReplyCreateInput = v.InferInput<typeof CommentReplyCreateSchema>;
+export type CommentUpdateInput = v.InferInput<typeof CommentUpdateSchema>;
+
 // ── Upload schemas ────────────────────────────────────────────────────────────
 
 export const UploadSignatureSchema = v.object({

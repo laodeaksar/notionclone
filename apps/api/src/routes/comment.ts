@@ -1,8 +1,14 @@
 import { Hono } from "hono";
+import * as v from "valibot";
 import { eq, and, isNull, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getDb, comment, page, workspaceMember } from "@notion-clone/db";
 import type { DB } from "@notion-clone/db";
+import {
+  CommentCreateSchema,
+  CommentReplyCreateSchema,
+  CommentUpdateSchema,
+} from "@notion-clone/schemas";
 import { authMiddleware } from "../middleware/auth.js";
 import { NotFoundError, ForbiddenError, BadRequestError } from "../errors.js";
 import type { Env, Variables } from "../types.js";
@@ -53,9 +59,7 @@ export const commentRoutes = new Hono<{ Bindings: Env; Variables: Variables }>()
     const db = getDb(c.env.DB);
     const session = c.get("session");
     const pageId = c.req.param("pageId");
-    const body = (await c.req.json()) as { content: string; quote?: string };
-
-    if (!body.content?.trim()) throw new BadRequestError("Content is required");
+    const { content, quote } = v.parse(CommentCreateSchema, await c.req.json());
 
     const p = await db.query.page.findFirst({ where: eq(page.id, pageId) });
     if (!p) throw new NotFoundError("Page");
@@ -66,8 +70,8 @@ export const commentRoutes = new Hono<{ Bindings: Env; Variables: Variables }>()
       id,
       pageId,
       authorId: session.user.id,
-      content: body.content.trim(),
-      quote: body.quote?.trim() ?? null,
+      content: content.trim(),
+      quote: quote?.trim() ?? null,
     });
 
     const full = await db.query.comment.findFirst({
@@ -90,9 +94,7 @@ export const commentRoutes = new Hono<{ Bindings: Env; Variables: Variables }>()
     const session = c.get("session");
     const pageId = c.req.param("pageId");
     const commentId = c.req.param("commentId");
-    const body = (await c.req.json()) as { content: string };
-
-    if (!body.content?.trim()) throw new BadRequestError("Content is required");
+    const { content } = v.parse(CommentReplyCreateSchema, await c.req.json());
 
     const p = await db.query.page.findFirst({ where: eq(page.id, pageId) });
     if (!p) throw new NotFoundError("Page");
@@ -110,7 +112,7 @@ export const commentRoutes = new Hono<{ Bindings: Env; Variables: Variables }>()
       pageId,
       authorId: session.user.id,
       parentId: commentId,
-      content: body.content.trim(),
+      content: content.trim(),
     });
 
     const full = await db.query.comment.findFirst({
@@ -121,15 +123,16 @@ export const commentRoutes = new Hono<{ Bindings: Env; Variables: Variables }>()
     return c.json(full, 201);
   })
 
-  // PATCH /api/comments/:id  (update content or resolved)
+  // PATCH /api/comments/:id
   .patch("/comments/:id", async (c) => {
     const db = getDb(c.env.DB);
     const session = c.get("session");
     const commentId = c.req.param("id");
-    const body = (await c.req.json()) as {
-      content?: string;
-      resolved?: boolean;
-    };
+    const body = v.parse(CommentUpdateSchema, await c.req.json());
+
+    if (body.content === undefined && body.resolved === undefined) {
+      throw new BadRequestError("At least one of content or resolved is required");
+    }
 
     const existing = await db.query.comment.findFirst({
       where: eq(comment.id, commentId),
@@ -152,7 +155,7 @@ export const commentRoutes = new Hono<{ Bindings: Env; Variables: Variables }>()
 
     const [updated] = await db
       .update(comment)
-      .set(updates as any)
+      .set(updates as never)
       .where(eq(comment.id, commentId))
       .returning();
 
