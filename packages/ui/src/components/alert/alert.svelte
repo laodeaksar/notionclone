@@ -1,36 +1,43 @@
 <script lang="ts" module>
-  import type { HTMLAttributes } from "svelte/elements";
+	import { type VariantProps, tv } from "tailwind-variants";
 
-  export interface AlertProps extends HTMLAttributes<HTMLDivElement> {
-    variant?: "default" | "destructive";
-  }
+	export const alertVariants = tv({
+		base: "cn-alert group/alert relative w-full",
+		variants: {
+			variant: {
+				default: "cn-alert-variant-default",
+				destructive: "cn-alert-variant-destructive",
+			},
+		},
+		defaultVariants: {
+			variant: "default",
+		},
+	});
+
+	export type AlertVariant = VariantProps<typeof alertVariants>["variant"];
 </script>
 
 <script lang="ts">
-  import { cn } from "../../utils.js";
+	import type { HTMLAttributes } from "svelte/elements";
+	import { cn, type WithElementRef } from "$lib/utils.js";
 
-  let {
-    variant = "default",
-    class: className,
-    children,
-    ...rest
-  }: AlertProps = $props();
-
-  const variantClasses = {
-    default: "bg-background text-foreground border-border",
-    destructive:
-      "bg-destructive/10 border-destructive/20 text-destructive",
-  };
+	let {
+		ref = $bindable(null),
+		class: className,
+		variant = "default",
+		children,
+		...restProps
+	}: WithElementRef<HTMLAttributes<HTMLDivElement>> & {
+		variant?: AlertVariant;
+	} = $props();
 </script>
 
 <div
-  role="alert"
-  class={cn(
-    "relative w-full rounded-md border p-3 text-sm",
-    variantClasses[variant],
-    className
-  )}
-  {...rest}
+	bind:this={ref}
+	data-slot="alert"
+	role="alert"
+	class={cn(alertVariants({ variant }), className)}
+	{...restProps}
 >
-  {@render children?.()}
+	{@render children?.()}
 </div>

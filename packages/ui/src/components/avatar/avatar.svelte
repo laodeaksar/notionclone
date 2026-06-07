@@ -1,40 +1,26 @@
-<script lang="ts" module>
-  import type { HTMLAttributes } from "svelte/elements";
-
-  export interface AvatarProps extends HTMLAttributes<HTMLDivElement> {
-    fallback: string;
-    size?: "sm" | "default" | "lg";
-  }
-</script>
-
 <script lang="ts">
-  import { cn } from "../../utils.js";
+	import { Avatar as AvatarPrimitive } from "bits-ui";
+	import { cn } from "$lib/utils.js";
 
-  let {
-    fallback,
-    size = "default",
-    class: className,
-    ...rest
-  }: AvatarProps = $props();
-
-  const sizeClasses = {
-    sm: "h-6 w-6 text-xs",
-    default: "h-8 w-8 text-sm",
-    lg: "h-10 w-10 text-base",
-  };
-
-  const initial = $derived(fallback.charAt(0).toUpperCase());
+	let {
+		ref = $bindable(null),
+		loadingStatus = $bindable("loading"),
+		size = "default",
+		class: className,
+		...restProps
+	}: AvatarPrimitive.RootProps & {
+		size?: "default" | "sm" | "lg";
+	} = $props();
 </script>
 
-<div
-  class={cn(
-    "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full",
-    "bg-primary/10 font-semibold text-primary select-none",
-    sizeClasses[size],
-    className
-  )}
-  aria-label={fallback}
-  {...rest}
->
-  {initial}
-</div>
+<AvatarPrimitive.Root
+	bind:ref
+	bind:loadingStatus
+	data-slot="avatar"
+	data-size={size}
+	class={cn(
+		"cn-avatar after:border-border group/avatar relative flex shrink-0 select-none after:absolute after:inset-0 after:border after:mix-blend-darken dark:after:mix-blend-lighten",
+		className
+	)}
+	{...restProps}
+/>

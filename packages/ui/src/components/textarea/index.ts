@@ -1,2 +1,7 @@
-export { default as Root } from "./textarea.svelte";
-export type { TextareaProps } from "./textarea.svelte";
+import Root from "./textarea.svelte";
+
+export {
+	Root,
+	//
+	Root as Textarea,
+};
