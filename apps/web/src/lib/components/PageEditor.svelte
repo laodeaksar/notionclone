@@ -330,7 +330,7 @@
           src: result.src,
           align: "center",
           ...(result.pendingId ? { pendingId: result.pendingId } : {}),
-        }).run();
+        } as any).run();
       } catch (err) {
         console.error("Image upload failed:", err);
       }

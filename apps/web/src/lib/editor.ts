@@ -386,11 +386,11 @@ export const CustomImage = Image.extend({
         },
 
         stopEvent(event) {
-          return captionEl.contains(event.target as Node);
+          return captionEl.contains(event.target as unknown as globalThis.Node);
         },
 
         ignoreMutation(mutation) {
-          return captionEl.contains(mutation.target as Node);
+          return captionEl.contains(mutation.target as unknown as globalThis.Node);
         },
       };
     };
@@ -526,11 +526,11 @@ export const CustomBlockquote = Blockquote.extend({
         },
 
         stopEvent(event) {
-          return cite.contains(event.target as Node);
+          return cite.contains(event.target as unknown as globalThis.Node);
         },
 
         ignoreMutation(mutation) {
-          return cite.contains(mutation.target as Node);
+          return cite.contains(mutation.target as unknown as globalThis.Node);
         },
       };
     };
@@ -774,6 +774,10 @@ const SlashMenuExtension = Extension.create({
                 rect: props.clientRect ?? null,
                 contextElement: editor.view.dom,
                 executeCommand: (item) => localCommand?.(item),
+                urlInputMode: false,
+                onUrlSubmit: null,
+                urlLabel: "",
+                urlPlaceholder: "",
               });
             },
 

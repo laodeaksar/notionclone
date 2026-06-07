@@ -95,8 +95,8 @@
       <!-- Inline workspace Select -->
       <Select.Root
         options={wsOptions}
-        value={$currentWorkspaceId}
-        onValueChange={(id) => currentWorkspaceId.set(id)}
+        value={$currentWorkspaceId as string | undefined}
+        onValueChange={(id: string) => currentWorkspaceId.set(id)}
         placeholder="Select workspace"
         class="flex-1 min-w-0"
       >

@@ -15,7 +15,7 @@
   let user = $derived($userStore);
 
   // ── Page query ────────────────────────────────────────────────────────────
-  const pageQuery = createQuery(() => pageQueryOptions(pageId));
+  const pageQuery = createQuery(() => pageQueryOptions(pageId ?? ""));
   const currentPage = $derived(pageQuery.data ?? null);
   const loading = $derived(pageQuery.isPending);
   const notFound = $derived(pageQuery.isError);
@@ -64,7 +64,7 @@
   }
 
   function handleRestore() {
-    qc.invalidateQueries({ queryKey: pageKey(pageId) });
+    qc.invalidateQueries({ queryKey: pageKey(pageId ?? "") });
   }
 
   // ── Delete page mutation ──────────────────────────────────────────────────

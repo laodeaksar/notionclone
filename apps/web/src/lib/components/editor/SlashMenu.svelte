@@ -8,8 +8,6 @@
     Lightbulb, Info, AlertTriangle, CheckCircle,
     ImageIcon, Link, PlayCircle,
   } from "lucide-svelte";
-  import type { Component } from "svelte";
-
   let {
     slash,
   }: {
@@ -17,7 +15,7 @@
   } = $props();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const iconMap: Record<string, Component<any>> = {
+  const iconMap: Record<string, any> = {
     "heading-1": Heading1,
     "heading-2": Heading2,
     "heading-3": Heading3,

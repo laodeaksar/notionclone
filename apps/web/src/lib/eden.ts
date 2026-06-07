@@ -8,7 +8,8 @@ const apiBase =
     ? (import.meta.env.PUBLIC_API_URL as string)
     : "";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const api = hc<App>(apiBase, {
   fetch: (req: RequestInfo | URL, options?: RequestInit) =>
     fetch(req, { ...options, credentials: "include" }),
-});
+}) as any;

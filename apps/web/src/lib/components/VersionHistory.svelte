@@ -30,7 +30,7 @@
       // Find the version record to pass full context to parent
       const version = versions.find((v) => v.id === versionId);
       if (version) {
-        onRestore({ ...version, ...restoredPage });
+        onRestore({ ...version, ...restoredPage } as PageVersion);
       }
       // Bust the versions list cache so next open shows fresh state
       qc.invalidateQueries({ queryKey: versionsKey(pageId) });

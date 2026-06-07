@@ -56,7 +56,11 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pnpm --filter api dev"
+args = """
+bash -c 'cd apps/api && printf \"BETTER_AUTH_SECRET=%s
+BETTER_AUTH_URL=https://%s
+ALLOWED_ORIGINS=https://%s,http://localhost:5000,http://0.0.0.0:5000
+\" \"$BETTER_AUTH_SECRET\" \"$REPLIT_DEV_DOMAIN\" \"$REPLIT_DEV_DOMAIN\" > .dev.vars && cd ../.. && pnpm --filter api dev'"""
 waitForPort = 3000
 
 [[workflows.workflow]]
@@ -95,10 +99,6 @@ outputType = "console"
 [[ports]]
 localPort = 3000
 externalPort = 3000
-
-[[ports]]
-localPort = 5000
-externalPort = 80
 
 [[ports]]
 localPort = 5001
