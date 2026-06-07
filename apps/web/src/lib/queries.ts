@@ -19,6 +19,18 @@ export type {
   CommentThread,
 };
 
+// ── staleTime policy ──────────────────────────────────────────────────────────
+// STATIC   (60 s) — rarely changes: workspace list, member list
+// CONTENT  (30 s) — user-driven edits: page list, individual page
+// LIVE     (10 s) — other users change this too: comments
+// VOLATILE  (0)  — always refetch: version history (explicit-save semantics)
+const STALE = {
+  STATIC: 60_000,
+  CONTENT: 30_000,
+  LIVE: 10_000,
+  VOLATILE: 0,
+} as const;
+
 // ── Query Keys ────────────────────────────────────────────────────────────────
 
 export const workspacesKey = () => ["workspaces"] as const;
@@ -41,7 +53,7 @@ export function workspacesQueryOptions() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json() as Promise<Workspace[]>;
     },
-    staleTime: 60_000,
+    staleTime: STALE.STATIC,
   };
 }
 
@@ -54,7 +66,7 @@ export function pagesQueryOptions(workspaceId: string) {
       return res.json() as Promise<Page[]>;
     },
     enabled: workspaceId.length > 0,
-    staleTime: 30_000,
+    staleTime: STALE.CONTENT,
   };
 }
 
@@ -67,7 +79,7 @@ export function pageQueryOptions(pageId: string) {
       return res.json() as Promise<Page>;
     },
     enabled: pageId.length > 0,
-    staleTime: 30_000,
+    staleTime: STALE.CONTENT,
   };
 }
 
@@ -80,7 +92,7 @@ export function versionsQueryOptions(pageId: string, enabled: boolean) {
       return res.json() as Promise<PageVersion[]>;
     },
     enabled: enabled && pageId.length > 0,
-    staleTime: 0,
+    staleTime: STALE.VOLATILE,
   };
 }
 
@@ -93,7 +105,7 @@ export function workspaceMembersQueryOptions(workspaceId: string) {
       return res.json() as Promise<WorkspaceMember[]>;
     },
     enabled: workspaceId.length > 0,
-    staleTime: 60_000,
+    staleTime: STALE.STATIC,
   };
 }
 
@@ -106,7 +118,7 @@ export function commentsQueryOptions(pageId: string, enabled: boolean) {
       return res.json() as Promise<CommentThread[]>;
     },
     enabled: enabled && pageId.length > 0,
-    staleTime: 10_000,
+    staleTime: STALE.LIVE,
   };
 }
 
