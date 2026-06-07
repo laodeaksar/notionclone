@@ -12,11 +12,8 @@
 
 <kbd
 	bind:this={ref}
-	data-slot="kbd"
-	class={cn(
-		"cn-kbd pointer-events-none inline-flex items-center justify-center select-none",
-		className
-	)}
+	data-slot="kbd-group"
+	class={cn("cn-kbd-group inline-flex items-center", className)}
 	{...restProps}
 >
 	{@render children?.()}
