@@ -1,12 +1,8 @@
 import { writable } from "svelte/store";
 import { browser } from "$app/environment";
+import type { User } from "@notion-clone/schemas";
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  image?: string | null;
-}
+export type { User };
 
 const STORAGE_KEY = "notion-clone:user";
 

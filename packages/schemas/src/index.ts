@@ -16,6 +16,98 @@ export const SignInSchema = v.object({
 export type SignUpInput = v.InferInput<typeof SignUpSchema>;
 export type SignInInput = v.InferInput<typeof SignInSchema>;
 
+// ── Domain response types ─────────────────────────────────────────────────────
+// Single source of truth for all API response shapes used by both
+// the frontend (stores, queries) and the backend (routes).
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  description: string | null;
+  slug: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkspaceMember {
+  id: string;
+  userId: string;
+  workspaceId: string;
+  role: string;
+  createdAt: string | number;
+  user: { id: string; name: string; email: string; image: string | null };
+}
+
+export interface Page {
+  id: string;
+  title: string;
+  icon: string | null;
+  coverImage: string | null;
+  content: string | null;
+  workspaceId: string;
+  parentId: string | null;
+  createdBy: string;
+  order: number;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PageTree extends Page {
+  children: PageTree[];
+}
+
+export interface PageVersion {
+  id: string;
+  pageId: string;
+  title: string;
+  content: string;
+  icon: string | null;
+  coverImage: string | null;
+  createdAt: string;
+  savedByUser: { id: string; name: string; email: string };
+}
+
+export interface CommentAuthor {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface CommentReply {
+  id: string;
+  pageId: string;
+  authorId: string;
+  parentId: string;
+  content: string;
+  quote: string | null;
+  resolved: boolean;
+  createdAt: string | number;
+  updatedAt: string | number;
+  author: CommentAuthor;
+}
+
+export interface CommentThread {
+  id: string;
+  pageId: string;
+  authorId: string;
+  parentId: string | null;
+  content: string;
+  quote: string | null;
+  resolved: boolean;
+  createdAt: string | number;
+  updatedAt: string | number;
+  author: CommentAuthor;
+  replies: CommentReply[];
+}
+
 // ── Workspace schemas ─────────────────────────────────────────────────────────
 
 export const WorkspaceCreateSchema = v.object({
@@ -86,4 +178,3 @@ export const UploadSignatureSchema = v.object({
 });
 
 export type UploadSignatureInput = v.InferInput<typeof UploadSignatureSchema>;
-

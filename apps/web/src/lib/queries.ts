@@ -1,61 +1,23 @@
 import { api } from "$lib/eden.js";
-import type { Page } from "$lib/stores/page.js";
-import type { Workspace } from "$lib/stores/workspace.js";
+import type {
+  Page,
+  Workspace,
+  WorkspaceMember,
+  PageVersion,
+  CommentAuthor,
+  CommentReply,
+  CommentThread,
+} from "@notion-clone/schemas";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export interface CommentAuthor {
-  id: string;
-  name: string;
-  email: string;
-}
-
-export interface CommentReply {
-  id: string;
-  pageId: string;
-  authorId: string;
-  parentId: string;
-  content: string;
-  quote: string | null;
-  resolved: boolean;
-  createdAt: string | number;
-  updatedAt: string | number;
-  author: CommentAuthor;
-}
-
-export interface CommentThread {
-  id: string;
-  pageId: string;
-  authorId: string;
-  parentId: string | null;
-  content: string;
-  quote: string | null;
-  resolved: boolean;
-  createdAt: string | number;
-  updatedAt: string | number;
-  author: CommentAuthor;
-  replies: CommentReply[];
-}
-
-export interface WorkspaceMember {
-  id: string;
-  userId: string;
-  workspaceId: string;
-  role: string;
-  createdAt: string | number;
-  user: { id: string; name: string; email: string; image: string | null };
-}
-
-export interface PageVersion {
-  id: string;
-  pageId: string;
-  title: string;
-  content: string;
-  icon: string | null;
-  coverImage: string | null;
-  createdAt: string;
-  savedByUser: { id: string; name: string; email: string };
-}
+export type {
+  Page,
+  Workspace,
+  WorkspaceMember,
+  PageVersion,
+  CommentAuthor,
+  CommentReply,
+  CommentThread,
+};
 
 // ── Query Keys ────────────────────────────────────────────────────────────────
 
