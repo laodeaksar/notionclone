@@ -10,3 +10,7 @@ export type WithElementRef<T, E extends Element = Element> = T & {
 };
 
 export type WithoutChildrenOrChild<T> = Omit<T, "children" | "child">;
+
+export type WithoutChild<T> = Omit<T, "child">;
+
+export type WithoutChildren<T> = Omit<T, "children">;

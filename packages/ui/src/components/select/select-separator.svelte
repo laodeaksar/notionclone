@@ -1,18 +1,19 @@
 <script lang="ts">
-	import type { Separator as SeparatorPrimitive } from "bits-ui";
-	import { Separator } from "$lib/registry/ui/separator/index.js";
-	import { cn } from "$lib/utils.js";
+	import { cn } from "../../utils.js";
+	import type { HTMLAttributes } from "svelte/elements";
+	import type { WithElementRef } from "../../utils.js";
 
 	let {
 		ref = $bindable(null),
 		class: className,
 		...restProps
-	}: SeparatorPrimitive.RootProps = $props();
+	}: WithElementRef<HTMLAttributes<HTMLDivElement>> = $props();
 </script>
 
-<Separator
-	bind:ref
+<div
+	bind:this={ref}
 	data-slot="select-separator"
-	class={cn("cn-select-separator pointer-events-none", className)}
+	role="separator"
+	class={cn("cn-select-separator pointer-events-none shrink-0 bg-border h-px w-full", className)}
 	{...restProps}
-/>
+></div>
