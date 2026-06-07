@@ -42,7 +42,7 @@
         <line x1="10" y1="9" x2="8" y2="9" />
       </svg>
     </div>
-    <span class="text-xl font-bold tracking-tight text-foreground">Notion Clone</span>
+    <span class="text-xl font-bold tracking-tight text-foreground">Aksar La'ode</span>
   </div>
 
   <!-- Status indicator -->

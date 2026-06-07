@@ -12,9 +12,9 @@ export default defineConfig({
       // Let SvelteKit handle its own routing; only cache static assets.
       injectRegister: "auto",
       manifest: {
-        name: "Notion Clone",
-        short_name: "Notes",
-        description: "Aplikasi catatan kolaboratif",
+        name: "Aksar La'ode",
+        short_name: "Aksar",
+        description: "Aplikasi catatan kolaboratif Aksar La'ode",
         theme_color: "#0f172a",
         background_color: "#0f172a",
         display: "standalone",
