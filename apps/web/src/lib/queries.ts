@@ -25,8 +25,6 @@ export const workspacesKey = () => ["workspaces"] as const;
 export const pagesKey = (workspaceId: string) => ["pages", workspaceId] as const;
 export const pageKey = (pageId: string) => ["page", pageId] as const;
 export const versionsKey = (pageId: string) => ["versions", pageId] as const;
-
-// backward-compat aliases used in older Sidebar import
 export const commentsKey = (pageId: string) => ["comments", pageId] as const;
 export const membersKey = (workspaceId: string) => ["members", workspaceId] as const;
 
@@ -77,14 +75,38 @@ export function versionsQueryOptions(pageId: string, enabled: boolean) {
   return {
     queryKey: versionsKey(pageId),
     queryFn: async (): Promise<PageVersion[]> => {
-      const res = await fetch(`/api/pages/${pageId}/versions`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to load history");
+      const res = await api.api.pages[":id"].versions.$get({ param: { id: pageId } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json() as Promise<PageVersion[]>;
     },
     enabled: enabled && pageId.length > 0,
     staleTime: 0,
+  };
+}
+
+export function workspaceMembersQueryOptions(workspaceId: string) {
+  return {
+    queryKey: membersKey(workspaceId),
+    queryFn: async (): Promise<WorkspaceMember[]> => {
+      const res = await api.api.workspaces[":id"].members.$get({ param: { id: workspaceId } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<WorkspaceMember[]>;
+    },
+    enabled: workspaceId.length > 0,
+    staleTime: 60_000,
+  };
+}
+
+export function commentsQueryOptions(pageId: string, enabled: boolean) {
+  return {
+    queryKey: commentsKey(pageId),
+    queryFn: async (): Promise<CommentThread[]> => {
+      const res = await api.api.pages[":pageId"].comments.$get({ param: { pageId } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<CommentThread[]>;
+    },
+    enabled: enabled && pageId.length > 0,
+    staleTime: 10_000,
   };
 }
 
@@ -156,13 +178,11 @@ export async function saveVersionFn(input: {
   title: string;
   content: string;
 }): Promise<PageVersion> {
-  const res = await fetch(`/api/pages/${input.pageId}/versions`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title: input.title, content: input.content }),
+  const res = await api.api.pages[":id"].versions.$post({
+    param: { id: input.pageId },
+    json: { title: input.title, content: input.content },
   });
-  if (!res.ok) throw new Error("Server error");
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<PageVersion>;
 }
 
@@ -170,46 +190,11 @@ export async function restoreVersionFn(input: {
   pageId: string;
   versionId: string;
 }): Promise<Page> {
-  const res = await fetch(
-    `/api/pages/${input.pageId}/versions/${input.versionId}/restore`,
-    { method: "POST", credentials: "include" }
-  );
-  if (!res.ok) throw new Error("Restore failed");
+  const res = await api.api.pages[":id"].versions[":versionId"].restore.$post({
+    param: { id: input.pageId, versionId: input.versionId },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<Page>;
-}
-
-// ── Workspace Members ─────────────────────────────────────────────────────────
-
-export function workspaceMembersQueryOptions(workspaceId: string) {
-  return {
-    queryKey: membersKey(workspaceId),
-    queryFn: async (): Promise<WorkspaceMember[]> => {
-      const res = await fetch(`/api/workspaces/${workspaceId}/members`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to load members");
-      return res.json() as Promise<WorkspaceMember[]>;
-    },
-    enabled: workspaceId.length > 0,
-    staleTime: 60_000,
-  };
-}
-
-// ── Comment Query / Mutations ─────────────────────────────────────────────────
-
-export function commentsQueryOptions(pageId: string, enabled: boolean) {
-  return {
-    queryKey: commentsKey(pageId),
-    queryFn: async (): Promise<CommentThread[]> => {
-      const res = await fetch(`/api/pages/${pageId}/comments`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to load comments");
-      return res.json() as Promise<CommentThread[]>;
-    },
-    enabled: enabled && pageId.length > 0,
-    staleTime: 10_000,
-  };
 }
 
 export async function createCommentFn(input: {
@@ -217,13 +202,11 @@ export async function createCommentFn(input: {
   content: string;
   quote?: string;
 }): Promise<CommentThread> {
-  const res = await fetch(`/api/pages/${input.pageId}/comments`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content: input.content, quote: input.quote }),
+  const res = await api.api.pages[":pageId"].comments.$post({
+    param: { pageId: input.pageId },
+    json: { content: input.content, quote: input.quote },
   });
-  if (!res.ok) throw new Error("Failed to create comment");
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<CommentThread>;
 }
 
@@ -232,16 +215,11 @@ export async function createReplyFn(input: {
   commentId: string;
   content: string;
 }): Promise<CommentReply> {
-  const res = await fetch(
-    `/api/pages/${input.pageId}/comments/${input.commentId}/replies`,
-    {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: input.content }),
-    }
-  );
-  if (!res.ok) throw new Error("Failed to create reply");
+  const res = await api.api.pages[":pageId"].comments[":commentId"].replies.$post({
+    param: { pageId: input.pageId, commentId: input.commentId },
+    json: { content: input.content },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<CommentReply>;
 }
 
@@ -251,19 +229,11 @@ export async function updateCommentFn(input: {
   resolved?: boolean;
 }): Promise<void> {
   const { id, ...body } = input;
-  const res = await fetch(`/api/comments/${id}`, {
-    method: "PATCH",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error("Failed to update comment");
+  const res = await api.api.comments[":id"].$patch({ param: { id }, json: body });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
 export async function deleteCommentFn(id: string): Promise<void> {
-  const res = await fetch(`/api/comments/${id}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
-  if (!res.ok) throw new Error("Failed to delete comment");
+  const res = await api.api.comments[":id"].$delete({ param: { id } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
