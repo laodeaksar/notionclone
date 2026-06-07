@@ -13,3 +13,6 @@ export * as Tooltip from "./tooltip/index.js";
 export * as Select from "./select/index.js";
 export * as Switch from "./switch/index.js";
 export * as ContextMenu from "./context-menu/index.js";
+export * as Sheet from "./sheet/index.js";
+export * as Spinner from "./spinner/index.js";
+export { Toaster } from "./sonner/index.js";

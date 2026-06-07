@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Toaster as Sonner, type ToasterProps as SonnerProps } from "svelte-sonner";
 	import { mode } from "mode-watcher";
+	import { Loader2, CircleCheck, OctagonX, Info, TriangleAlert } from "lucide-svelte";
 
 	let { ...restProps }: SonnerProps = $props();
 </script>
@@ -12,28 +13,18 @@
 	{...restProps}
 >
 	{#snippet loadingIcon()}
-      <Loader2Icon
-			class="size-4 animate-spin"
-		/>
+		<Loader2 class="size-4 animate-spin" />
 	{/snippet}
 	{#snippet successIcon()}
-			<CircleCheckIcon
-			class="size-4"
-		/>
+		<CircleCheck class="size-4" />
 	{/snippet}
 	{#snippet errorIcon()}
-      <OctagonXIcon
-			class="size-4"
-		/>
+		<OctagonX class="size-4" />
 	{/snippet}
 	{#snippet infoIcon()}
-			<InfoIcon
-			class="size-4"
-		/>
+		<Info class="size-4" />
 	{/snippet}
 	{#snippet warningIcon()}
-      <TriangleAlertIcon
-			class="size-4"
-		/>
+		<TriangleAlert class="size-4" />
 	{/snippet}
 </Sonner>

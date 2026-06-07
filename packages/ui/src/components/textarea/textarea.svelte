@@ -11,12 +11,15 @@
 
   let {
     class: className,
+    ref = $bindable(null),
+    value = $bindable(),
     error = false,
     ...rest
-  }: TextareaProps = $props();
+  }: TextareaProps & { ref?: HTMLTextAreaElement | null } = $props();
 </script>
 
 <textarea
+  bind:this={ref}
   class={cn(
     "flex min-h-[60px] w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm",
     "placeholder:text-muted-foreground",
@@ -25,5 +28,6 @@
     error ? "border-destructive focus-visible:ring-destructive" : "border-input",
     className
   )}
+  bind:value
   {...rest}
 ></textarea>
